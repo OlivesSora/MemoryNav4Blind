@@ -1,0 +1,52 @@
+schema_version: 1
+coordinate_system: GCJ-02
+routes_dir: memory_nav/routes
+
+trajectory:
+  resample_spacing_m: 5.0
+  smoothing_window: 5
+  max_speed_m_s: 4.0
+  duplicate_distance_m: 0.05
+
+vio:
+  topic: /odometry
+  maximum_alignment_rms_m: 5.0
+  online_minimum_pairs: 3
+
+quality:
+  minimum_gps_samples: 5
+  minimum_route_length_m: 3.0
+  maximum_gps_gap_s: 5.0
+  maximum_rejection_ratio: 0.5
+
+matching:
+  backward_window_m: 2.0
+  forward_window_m: 20.0
+  initial_search_m: 15.0
+  good_distance_m: 3.0
+  lost_distance_m: 8.0
+  heading_weight: 0.03
+  max_heading_error_deg: 100.0
+
+deviation:
+  warning_m: 3.0
+  severe_m: 5.0
+  phone_scale: 2.0
+  enter_samples: 3
+  recover_samples: 3
+
+anchors:
+  # max_spacing_m kept large so only start/turn/end anchors are produced;
+  # distance-based "interval" anchors are disabled.
+  max_spacing_m: 1000.0
+  turn_angle_deg: 35.0
+  advance_distance_m: 8.0
+  arrival_distance_m: 2.0
+  blur_threshold: 100.0
+  auto_confirm: true
+
+voice:
+  cooldown_s: 10.0
+  # Speak a steering direction only when the clock direction changes by at
+  # least this many steps (1 step = 30 deg) from the last spoken one.
+  direction_change_min_clocks: 2

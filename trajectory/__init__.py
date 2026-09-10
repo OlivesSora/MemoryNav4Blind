@@ -1,0 +1,1 @@
+"""Reference trajectory construction algorithms."""

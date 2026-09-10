@@ -1,0 +1,130 @@
+{
+  "anchors": [
+    {
+      "anchor_id": "image_0001",
+      "point_index": 0,
+      "s_m": 0.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0001.jpg"
+    },
+    {
+      "anchor_id": "anchor_0000",
+      "point_index": 0,
+      "s_m": 0.0,
+      "kind": "start",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    },
+    {
+      "anchor_id": "image_0002",
+      "point_index": 9,
+      "s_m": 4.5,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0002.jpg"
+    },
+    {
+      "anchor_id": "image_0003",
+      "point_index": 16,
+      "s_m": 8.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0003.jpg"
+    },
+    {
+      "anchor_id": "anchor_0001",
+      "point_index": 16,
+      "s_m": 8.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    },
+    {
+      "anchor_id": "image_0004",
+      "point_index": 37,
+      "s_m": 18.5,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0004.jpg"
+    },
+    {
+      "anchor_id": "anchor_0002",
+      "point_index": 37,
+      "s_m": 18.5,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    },
+    {
+      "anchor_id": "anchor_0003",
+      "point_index": 40,
+      "s_m": 20.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    },
+    {
+      "anchor_id": "anchor_0004",
+      "point_index": 43,
+      "s_m": 21.5,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    },
+    {
+      "anchor_id": "anchor_0005",
+      "point_index": 44,
+      "s_m": 22.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    },
+    {
+      "anchor_id": "image_0005",
+      "point_index": 45,
+      "s_m": 22.5,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0005.jpg"
+    },
+    {
+      "anchor_id": "image_0006",
+      "point_index": 46,
+      "s_m": 23.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0006.jpg"
+    },
+    {
+      "anchor_id": "image_0007",
+      "point_index": 48,
+      "s_m": 23.531731665576714,
+      "kind": "end",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0007.jpg"
+    },
+    {
+      "anchor_id": "anchor_0006",
+      "point_index": 48,
+      "s_m": 23.531731665576714,
+      "kind": "end",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    }
+  ]
+}

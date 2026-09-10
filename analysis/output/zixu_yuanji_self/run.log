@@ -1,0 +1,66 @@
+/home/wheeltec/.config/matplotlib is not a writable directory
+Matplotlib created a temporary cache directory at /tmp/matplotlib-mp7o2y2x because there was an issue with the default path (/home/wheeltec/.config/matplotlib); it is highly recommended to set the MPLCONFIGDIR environment variable to a writable directory, in particular to speed up the import of Matplotlib and to better support multiprocessing.
+{
+  "config": {
+    "fps": null,
+    "tau_theta_deg": 30.0,
+    "tau_vis": 0.15,
+    "tau_s_m": 20.0,
+    "visual_window_s": 2.0,
+    "lookahead_m": 8.0
+  },
+  "text_extraction": {
+    "available": false,
+    "error": "API key file not found: /tmp/no-modelscope-keys.json",
+    "model": "Qwen/Qwen3-VL-8B-Instruct"
+  },
+  "memory": {
+    "records": 130,
+    "keypoints": 103,
+    "anchors": 26,
+    "route_length_m": 311.2328908632779,
+    "anchor_reasons": {
+      "start": 1,
+      "turn": 16,
+      "spacing": 9,
+      "end": 1
+    },
+    "alignment": {
+      "source": "calibration",
+      "calibration_points": 77,
+      "fps": 10.984,
+      "frame_idx_min": 256,
+      "frame_idx_max": 4404,
+      "n_clamped_last": 0,
+      "n_duplicate_frames": 0
+    }
+  },
+  "test": {
+    "records": 130,
+    "keypoints": 103,
+    "anchors": 26,
+    "route_length_m": 311.2328908632779,
+    "anchor_reasons": {
+      "start": 1,
+      "turn": 16,
+      "spacing": 9,
+      "end": 1
+    },
+    "alignment": {
+      "source": "calibration",
+      "calibration_points": 77,
+      "fps": 10.984,
+      "frame_idx_min": 256,
+      "frame_idx_max": 4404,
+      "n_clamped_last": 0,
+      "n_duplicate_frames": 0
+    }
+  },
+  "follow": {
+    "mean_cross_track_error_m": 3.2234850286910293,
+    "mean_heading_error_deg": 22.277562857414328,
+    "mean_visual_sim": null,
+    "good_quality_ratio": 0.6893203883495146
+  }
+}
+outputs written to /home/wheeltec/projects/blind-nav/momery_nav/analysis/output/zixu_yuanji_self

@@ -1,0 +1,213 @@
+{
+  "coordinate_system": "GCJ-02",
+  "origin": {
+    "longitude": 113.4077671179539,
+    "latitude": 23.046494121694334
+  },
+  "points": [
+    {
+      "index": 0,
+      "s_m": 0.0,
+      "east_m": 0.0,
+      "north_m": 0.0,
+      "longitude": 113.4077671179539,
+      "latitude": 23.046494121694334,
+      "heading_deg": 92.56253890336662,
+      "curvature": 0.0,
+      "quality": "good",
+      "anchor_id": null
+    },
+    {
+      "index": 1,
+      "s_m": 5.0,
+      "east_m": -2.0429759525016697,
+      "north_m": 4.551261050086632,
+      "longitude": 113.40774717379513,
+      "latitude": 23.046535006367968,
+      "heading_deg": 56.920250427273615,
+      "curvature": -0.124415057370691,
+      "quality": "good",
+      "anchor_id": null
+    },
+    {
+      "index": 2,
+      "s_m": 10.0,
+      "east_m": -4.72978832192795,
+      "north_m": 8.64111385917017,
+      "longitude": 113.4077209443075,
+      "latitude": 23.04657174614085,
+      "heading_deg": 57.4936283397469,
+      "curvature": 0.0020014664861741564,
+      "quality": "good",
+      "anchor_id": null
+    },
+    {
+      "index": 3,
+      "s_m": 15.0,
+      "east_m": -8.36525545906665,
+      "north_m": 11.570095581075881,
+      "longitude": 113.40768545376064,
+      "latitude": 23.046598057631325,
+      "heading_deg": 200.31117692106739,
+      "curvature": 0.4985272904741997,
+      "quality": "good",
+      "anchor_id": null
+    },
+    {
+      "index": 4,
+      "s_m": 20.0,
+      "east_m": -8.015324705699392,
+      "north_m": 10.154643239969975,
+      "longitude": 113.40768886989213,
+      "latitude": 23.046585342406605,
+      "heading_deg": 102.51166084941855,
+      "curvature": -0.34138471246147656,
+      "quality": "good",
+      "anchor_id": null
+    },
+    {
+      "index": 5,
+      "s_m": 25.0,
+      "east_m": -10.528620244257503,
+      "north_m": 14.467161429054814,
+      "longitude": 113.4076643343291,
+      "latitude": 23.046624082416628,
+      "heading_deg": 83.14637590569215,
+      "curvature": -0.06759759657098213,
+      "quality": "good",
+      "anchor_id": null
+    },
+    {
+      "index": 6,
+      "s_m": 30.0,
+      "east_m": -11.699908446115813,
+      "north_m": 17.975845134512006,
+      "longitude": 113.4076528998539,
+      "latitude": 23.046655601458628,
+      "heading_deg": 83.57282531452333,
+      "curvature": 0.0014885892554574278,
+      "quality": "good",
+      "anchor_id": null
+    },
+    {
+      "index": 7,
+      "s_m": 35.0,
+      "east_m": -9.27416884038994,
+      "north_m": 16.952658932460885,
+      "longitude": 113.40767658066902,
+      "latitude": 23.04664641002059,
+      "heading_deg": 108.50547335956553,
+      "curvature": 0.08703135992538272,
+      "quality": "good",
+      "anchor_id": null
+    },
+    {
+      "index": 8,
+      "s_m": 40.0,
+      "east_m": -8.298917298247735,
+      "north_m": 16.865305549451524,
+      "longitude": 113.40768610137413,
+      "latitude": 23.046645625311797,
+      "heading_deg": 163.72358527698867,
+      "curvature": 0.19274757193875056,
+      "quality": "good",
+      "anchor_id": null
+    },
+    {
+      "index": 9,
+      "s_m": 45.0,
+      "east_m": -7.314383029579283,
+      "north_m": 11.976552826223191,
+      "longitude": 113.40769571270008,
+      "latitude": 23.046601708898883,
+      "heading_deg": 139.67411849409183,
+      "curvature": -0.08394847574211164,
+      "quality": "good",
+      "anchor_id": null
+    },
+    {
+      "index": 10,
+      "s_m": 50.0,
+      "east_m": -6.085083732444118,
+      "north_m": 7.141306185040784,
+      "longitude": 113.4077077134974,
+      "latitude": 23.04655827313928,
+      "heading_deg": 147.73840958337342,
+      "curvature": 0.028149686269440772,
+      "quality": "good",
+      "anchor_id": null
+    },
+    {
+      "index": 11,
+      "s_m": 55.0,
+      "east_m": -4.182038417678759,
+      "north_m": 2.527054054552621,
+      "longitude": 113.4077262916103,
+      "latitude": 23.046516822607146,
+      "heading_deg": 114.15437076702139,
+      "curvature": -0.11723041069258444,
+      "quality": "good",
+      "anchor_id": null
+    },
+    {
+      "index": 12,
+      "s_m": 60.0,
+      "east_m": -0.9440622175375328,
+      "north_m": -0.8952389214653949,
+      "longitude": 113.40775790172854,
+      "latitude": 23.046486079626273,
+      "heading_deg": 83.91456048662313,
+      "curvature": -0.10555685091427591,
+      "quality": "good",
+      "anchor_id": null
+    },
+    {
+      "index": 13,
+      "s_m": 65.0,
+      "east_m": -2.014032253284497,
+      "north_m": -1.4302432478214346,
+      "longitude": 113.40774745635241,
+      "latitude": 23.046481273600637,
+      "heading_deg": 146.009030542075,
+      "curvature": 0.21675058994973231,
+      "quality": "good",
+      "anchor_id": null
+    },
+    {
+      "index": 14,
+      "s_m": 70.0,
+      "east_m": 1.9735921311161082,
+      "north_m": -4.265104406813049,
+      "longitude": 113.40778638476648,
+      "latitude": 23.046455807609565,
+      "heading_deg": 98.89062863261651,
+      "curvature": -0.16447425031960677,
+      "quality": "good",
+      "anchor_id": null
+    },
+    {
+      "index": 15,
+      "s_m": 75.0,
+      "east_m": 5.135953963585291,
+      "north_m": -3.8198413882716222,
+      "longitude": 113.40781725671405,
+      "latitude": 23.046459807475316,
+      "heading_deg": 126.81738314406962,
+      "curvature": 0.150865524129233,
+      "quality": "good",
+      "anchor_id": null
+    },
+    {
+      "index": 16,
+      "s_m": 76.46156659626905,
+      "east_m": 5.462244450300738,
+      "north_m": -4.083391946989438,
+      "longitude": 113.407820442062,
+      "latitude": 23.046457439960363,
+      "heading_deg": 140.5612833212869,
+      "curvature": 0.0,
+      "quality": "good",
+      "anchor_id": null
+    }
+  ]
+}

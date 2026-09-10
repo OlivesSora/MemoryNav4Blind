@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "route_id": "bench1",
+  "state": "READY",
+  "coordinate_system": "GCJ-02",
+  "start_utc": "2026-09-09T07:12:19.797914+00:00",
+  "start_monotonic_ns": 60089559793114,
+  "sample_counts": {
+    "gps": 19,
+    "imu": 30,
+    "vio": 0,
+    "events": 8
+  },
+  "recorder": "buffered-v1",
+  "end_utc": "2026-09-09T07:12:38.676191+00:00",
+  "end_monotonic_ns": 60108438086001,
+  "local_origin": {
+    "longitude": 113.40751550914788,
+    "latitude": 23.04693096513195
+  },
+  "anchor_count": 14,
+  "pending_anchor_count": 0
+}

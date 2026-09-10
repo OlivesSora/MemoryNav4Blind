@@ -1,0 +1,5 @@
+quality:
+  # The imported L4 log samples GPS roughly every 2-3 s and drops repeated
+  # near-stationary fixes, leaving accepted-sample gaps up to ~22 s over short
+  # (7-11 m) distances. Relax the gap check that defaults to 5 s.
+  maximum_gps_gap_s: 25.0

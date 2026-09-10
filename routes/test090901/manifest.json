@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "route_id": "test090901",
+  "state": "FINALIZING",
+  "coordinate_system": "GCJ-02",
+  "start_utc": "2026-09-09T08:42:11.305633+00:00",
+  "start_monotonic_ns": 65481067513874,
+  "sample_counts": {
+    "gps": 10,
+    "imu": 161,
+    "vio": 0,
+    "events": 4
+  },
+  "recorder": "buffered-v1",
+  "vio_topic": "/odometry",
+  "end_utc": "2026-09-09T08:42:20.865163+00:00",
+  "end_monotonic_ns": 65490627054004
+}

@@ -1,0 +1,76 @@
+{
+  "anchors": [
+    {
+      "anchor_id": "anchor_0000",
+      "point_index": 0,
+      "s_m": 0.0,
+      "kind": "start",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    },
+    {
+      "anchor_id": "anchor_0001",
+      "point_index": 15,
+      "s_m": 75.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    },
+    {
+      "anchor_id": "anchor_0002",
+      "point_index": 21,
+      "s_m": 105.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    },
+    {
+      "anchor_id": "anchor_0003",
+      "point_index": 22,
+      "s_m": 110.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    },
+    {
+      "anchor_id": "anchor_0004",
+      "point_index": 23,
+      "s_m": 115.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    },
+    {
+      "anchor_id": "anchor_0005",
+      "point_index": 53,
+      "s_m": 265.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    },
+    {
+      "anchor_id": "anchor_0006",
+      "point_index": 56,
+      "s_m": 280.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    },
+    {
+      "anchor_id": "anchor_0007",
+      "point_index": 60,
+      "s_m": 296.25262224208217,
+      "kind": "end",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    }
+  ]
+}

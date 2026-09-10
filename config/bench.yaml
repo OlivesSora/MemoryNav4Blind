@@ -1,0 +1,4 @@
+# Bench/short-movement override: relax quality so a ~1 m route is READY.
+# Generate and follow must both pass --config memory_nav/config/bench.yaml.
+quality:
+  minimum_route_length_m: 0.5

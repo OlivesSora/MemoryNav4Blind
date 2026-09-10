@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "route_id": "suishi-2",
+  "state": "READY",
+  "coordinate_system": "GCJ-02",
+  "start_utc": "2026-09-10T06:58:05.018424+00:00",
+  "start_monotonic_ns": 145634780304287,
+  "sample_counts": {
+    "gps": 132,
+    "imu": 132,
+    "vio": 0,
+    "events": 0
+  },
+  "recorder": "import-gps-log-v1",
+  "source_log": "/home/wheeltec/projects/L4/reFineWithMacroAndMicroLocal/outdoor_nav_output/outdoor_nav-20260816_180110-suishi-2/output.jsonl",
+  "trimmed_lines": 70,
+  "end_utc": "2026-09-10T06:58:05.075827+00:00",
+  "end_monotonic_ns": 145634837721247,
+  "local_origin": {
+    "longitude": 113.4074121665483,
+    "latitude": 23.046587490745537
+  },
+  "anchor_count": 8,
+  "pending_anchor_count": 0
+}

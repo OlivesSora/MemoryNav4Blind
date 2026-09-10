@@ -1,0 +1,274 @@
+{
+  "anchors": [
+    {
+      "anchor_id": "image_0000",
+      "point_index": 0,
+      "s_m": 0.0,
+      "kind": "start",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0000.jpg"
+    },
+    {
+      "anchor_id": "anchor_0000",
+      "point_index": 0,
+      "s_m": 0.0,
+      "kind": "start",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    },
+    {
+      "anchor_id": "image_0001",
+      "point_index": 1,
+      "s_m": 5.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0001.jpg"
+    },
+    {
+      "anchor_id": "anchor_0001",
+      "point_index": 1,
+      "s_m": 5.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    },
+    {
+      "anchor_id": "image_0003",
+      "point_index": 3,
+      "s_m": 15.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0003.jpg"
+    },
+    {
+      "anchor_id": "image_0004",
+      "point_index": 3,
+      "s_m": 15.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0004.jpg"
+    },
+    {
+      "anchor_id": "anchor_0002",
+      "point_index": 3,
+      "s_m": 15.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    },
+    {
+      "anchor_id": "image_0005",
+      "point_index": 4,
+      "s_m": 20.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0005.jpg"
+    },
+    {
+      "anchor_id": "anchor_0003",
+      "point_index": 4,
+      "s_m": 20.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    },
+    {
+      "anchor_id": "image_0006",
+      "point_index": 6,
+      "s_m": 30.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0006.jpg"
+    },
+    {
+      "anchor_id": "image_0008",
+      "point_index": 6,
+      "s_m": 30.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0008.jpg"
+    },
+    {
+      "anchor_id": "image_0009",
+      "point_index": 7,
+      "s_m": 35.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0009.jpg"
+    },
+    {
+      "anchor_id": "image_0010",
+      "point_index": 8,
+      "s_m": 40.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0010.jpg"
+    },
+    {
+      "anchor_id": "image_0011",
+      "point_index": 8,
+      "s_m": 40.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0011.jpg"
+    },
+    {
+      "anchor_id": "image_0012",
+      "point_index": 8,
+      "s_m": 40.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0012.jpg"
+    },
+    {
+      "anchor_id": "anchor_0004",
+      "point_index": 8,
+      "s_m": 40.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    },
+    {
+      "anchor_id": "image_0002",
+      "point_index": 9,
+      "s_m": 45.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0002.jpg"
+    },
+    {
+      "anchor_id": "image_0013",
+      "point_index": 11,
+      "s_m": 55.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0013.jpg"
+    },
+    {
+      "anchor_id": "image_0014",
+      "point_index": 12,
+      "s_m": 60.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0014.jpg"
+    },
+    {
+      "anchor_id": "image_0015",
+      "point_index": 13,
+      "s_m": 65.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0015.jpg"
+    },
+    {
+      "anchor_id": "image_0016",
+      "point_index": 13,
+      "s_m": 65.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0016.jpg"
+    },
+    {
+      "anchor_id": "image_0017",
+      "point_index": 13,
+      "s_m": 65.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0017.jpg"
+    },
+    {
+      "anchor_id": "anchor_0005",
+      "point_index": 13,
+      "s_m": 65.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    },
+    {
+      "anchor_id": "image_0018",
+      "point_index": 14,
+      "s_m": 70.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0018.jpg"
+    },
+    {
+      "anchor_id": "anchor_0006",
+      "point_index": 14,
+      "s_m": 70.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    },
+    {
+      "anchor_id": "image_0019",
+      "point_index": 15,
+      "s_m": 75.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0019.jpg"
+    },
+    {
+      "anchor_id": "image_0020",
+      "point_index": 15,
+      "s_m": 75.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0020.jpg"
+    },
+    {
+      "anchor_id": "image_0021",
+      "point_index": 15,
+      "s_m": 75.0,
+      "kind": "turn",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0021.jpg"
+    },
+    {
+      "anchor_id": "image_0023",
+      "point_index": 16,
+      "s_m": 76.46156659626905,
+      "kind": "end",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": "anchors/candidate_0023.jpg"
+    },
+    {
+      "anchor_id": "anchor_0007",
+      "point_index": 16,
+      "s_m": 76.46156659626905,
+      "kind": "end",
+      "prompt_text": "",
+      "confirmed": true,
+      "image_path": null
+    }
+  ]
+}

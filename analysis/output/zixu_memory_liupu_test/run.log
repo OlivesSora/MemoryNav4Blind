@@ -1,0 +1,64 @@
+{
+  "config": {
+    "fps": null,
+    "tau_theta_deg": 30.0,
+    "tau_vis": 0.15,
+    "tau_s_m": 20.0,
+    "visual_window_s": 2.0,
+    "lookahead_m": 8.0
+  },
+  "text_extraction": {
+    "available": false,
+    "error": "API key file not found: /tmp/no-modelscope-keys.json",
+    "model": "Qwen/Qwen3-VL-8B-Instruct"
+  },
+  "memory": {
+    "records": 130,
+    "keypoints": 103,
+    "anchors": 26,
+    "route_length_m": 311.2328908632779,
+    "anchor_reasons": {
+      "start": 1,
+      "turn": 16,
+      "spacing": 9,
+      "end": 1
+    },
+    "alignment": {
+      "source": "calibration",
+      "calibration_points": 77,
+      "fps": 10.984,
+      "frame_idx_min": 256,
+      "frame_idx_max": 4404,
+      "n_clamped_last": 0,
+      "n_duplicate_frames": 0
+    }
+  },
+  "test": {
+    "records": 107,
+    "keypoints": 94,
+    "anchors": 19,
+    "route_length_m": 209.7707687731901,
+    "anchor_reasons": {
+      "start": 1,
+      "turn": 9,
+      "spacing": 8,
+      "end": 1
+    },
+    "alignment": {
+      "source": "calibration",
+      "calibration_points": 81,
+      "fps": 4.929,
+      "frame_idx_min": 1601,
+      "frame_idx_max": 3347,
+      "n_clamped_last": 0,
+      "n_duplicate_frames": 0
+    }
+  },
+  "follow": {
+    "mean_cross_track_error_m": 7.252304164424078,
+    "mean_heading_error_deg": 25.32341031127088,
+    "mean_visual_sim": null,
+    "good_quality_ratio": 0.2765957446808511
+  }
+}
+outputs written to /home/wheeltec/projects/blind-nav/momery_nav/analysis/output/zixu_memory_liupu_test

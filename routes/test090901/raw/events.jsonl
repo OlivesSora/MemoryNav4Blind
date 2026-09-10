@@ -1,0 +1,4 @@
+{"type":"anchor_image_failed","kind":"start","monotonic_ns":65481102524823}
+{"type":"anchor_image_failed","kind":"start","monotonic_ns":65482128520488}
+{"type":"anchor_image","kind":"start","monotonic_ns":65483161145704,"frame_monotonic_ns":65483360467284,"longitude":113.40755715552513,"latitude":23.046680863694395,"heading_deg":139.54360610205524,"image_path":"anchors/candidate_0000.jpg","blur_score":83.2213420348697,"clear":false,"frame_metadata":{"monotonic_ns":65483360467284,"width":640,"height":480}}
+{"type":"anchor_image","kind":"end","monotonic_ns":65490190308408,"frame_monotonic_ns":65490505622983,"longitude":113.40755715552513,"latitude":23.046680863694395,"heading_deg":139.54360610205524,"image_path":"anchors/candidate_0001.jpg","blur_score":405.58637694294185,"clear":true,"frame_metadata":{"monotonic_ns":65490505622983,"width":640,"height":480}}

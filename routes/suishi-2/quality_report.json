@@ -1,0 +1,19 @@
+{
+  "input_samples": 132,
+  "accepted_samples": 98,
+  "rejected_out_of_order": 0,
+  "rejected_duplicate": 30,
+  "rejected_speed": 4,
+  "route_length_m": 296.25262224208217,
+  "max_gap_s": 22.325000192,
+  "heading_alignment_samples": 91,
+  "heading_offset_deg": 33.81429113927962,
+  "vio_used": false,
+  "vio_samples": 0,
+  "vio_alignment_pairs": 0,
+  "vio_alignment_rms_m": null,
+  "vio_transform": null,
+  "rejection_ratio": 0.25757575757575757,
+  "ready": true,
+  "failure_reasons": []
+}
