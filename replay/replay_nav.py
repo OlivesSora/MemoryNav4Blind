@@ -123,6 +123,7 @@ class FollowGPSLogger:
         target_position: tuple[float, float] | None = None,
         match=None,
         voice_queued: bool = False,
+        segmentation: dict | None = None,
     ) -> None:
         record = {
             "log_time": datetime.now().astimezone().isoformat(timespec="milliseconds"),
@@ -151,6 +152,7 @@ class FollowGPSLogger:
             "lookahead_point": None if target_position is None else list(target_position),
             "route_progress": None if match is None else match.matched_s_m,
             "cross_track_error": None if match is None else match.cross_track_error_m,
+            "segmentation": segmentation,
         }
         self._stream.write(json.dumps(record, ensure_ascii=False) + "\n")
         self._stream.flush()
@@ -174,7 +176,7 @@ def validate_ready_route(route_dir: Path) -> None:
 
 
 class ReplayRunner:
-    def __init__(self, route_dir: Path, config: dict, gps=None, imu=None, speaker=None, camera=None, visual_matcher=None, vio=None, voice_directions: bool = False, follow_log_path: Path | None = None):
+    def __init__(self, route_dir: Path, config: dict, gps=None, imu=None, speaker=None, camera=None, visual_matcher=None, vio=None, voice_directions: bool = False, follow_log_path: Path | None = None, segmentation_guard=None):
         self.route_dir = route_dir
         route = json.loads((route_dir / "reference_trajectory.json").read_text(encoding="utf-8"))
         self.frame = LocalFrame(route["origin"]["longitude"], route["origin"]["latitude"])
@@ -206,6 +208,8 @@ class ReplayRunner:
             minimum_pairs=int(config["vio"]["online_minimum_pairs"]),
             max_rms_m=float(config["vio"]["maximum_alignment_rms_m"]),
         )
+        self.segmentation_guard = segmentation_guard
+        self._frame_counter = 0
         self.running = True
 
     def step(self) -> dict | None:
@@ -252,12 +256,34 @@ class ReplayRunner:
         command_clock, command_text = make_command(
             float(heading), target_heading, math.hypot(delta_east, delta_north)
         )
+        segmentation_result = None
+        segmentation_prompts: tuple = ()
+        if self.segmentation_guard is not None:
+            self._frame_counter += 1
+            frame_id = f"frame_{self._frame_counter}"
+            captured = None
+            if self.camera is not None:
+                try:
+                    captured, _frame = self.camera.capture_frame()
+                except Exception as exc:
+                    LOGGER.warning("segmentation frame capture failed: %s", exc)
+            decision = self.segmentation_guard.apply(
+                command_clock, command_text, frame_id, captured, time.monotonic()
+            )
+            if decision is not None:
+                segmentation_result = decision.result.to_dict()
+                command_clock = str(decision.command_clock)
+                command_text = decision.command_text
+                segmentation_prompts = decision.prompts
         gps_action = make_gps_action(float(heading), target_heading)
         navigation_state = "completed" if self.matcher.is_complete(self.arrival_distance_m) else "following"
         pause_progress = navigation_state == "completed"
         guidance = self.guidance.update(match.matched_s_m, navigation_state, match.cross_track_error_m, pause_progress, time.monotonic())
         self._play(guidance.prompts)
         emitted_prompts = list(guidance.prompts)
+        for prompt in segmentation_prompts:
+            self._play((prompt,))
+            emitted_prompts.append(prompt)
         if self.voice_directions and self.voice_worker is not None and navigation_state != "completed":
             direction_prompt = self.guidance.scheduler.request(
                 Prompt(f"direction:{command_clock}", command_text, 2), time.monotonic()
@@ -278,6 +304,7 @@ class ReplayRunner:
                 self.frame.to_geodetic(target_east, target_north),
                 match,
                 bool(emitted_prompts),
+                segmentation_result,
             )
         return {
             **match.to_dict(),
@@ -294,6 +321,7 @@ class ReplayRunner:
             "target_heading_deg": target_heading,
             "command_clock": command_clock,
             "command": command_text,
+            "segmentation": segmentation_result,
         }
 
     def _play(self, prompts) -> None:

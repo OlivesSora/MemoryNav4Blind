@@ -175,7 +175,21 @@ memory_nav/
 │   ├── matcher.py
 │   ├── deviation.py
 │   ├── anchor_matcher.py
-│   └── replay_nav.py
+│   ├── replay_nav.py
+│   └── replay_nav_seg.py
+├── segmentation/
+│   ├── geometry.py
+│   ├── avoidance.py
+│   ├── guard.py
+│   ├── mask_loader.py
+│   ├── providers.py
+│   ├── online_provider.py
+│   ├── online_visualizer.py
+│   ├── catseg_worker.py
+│   ├── protocol.py
+│   ├── visualize.py
+│   ├── precompute_masks.py
+│   └── validate_offline.py
 ├── interaction/
 │   └── voice_prompt.py
 ├── tools/
@@ -209,6 +223,7 @@ memory_nav/
 | `start_recording.sh` | `recording.recorder` | 创建路线会话并同步记录传感器和锚点候选 |
 | `build_reference.sh` | `trajectory.build_reference` | 清洗、融合、平滑并生成参考轨迹和质量报告 |
 | `start_replay.sh` | `replay.replay_nav` | 加载已就绪路线并启动在线重演与语音提示 |
+| `follow_reference_trajectory_seg.sh` | `replay.replay_nav_seg` | 在线跟随并叠加 CAT-Seg 可通行分割避障（自动拉起 catseg worker，不启动 VINS） |
 | `replay_offline.sh` | `tools.replay_offline` | 使用历史原始数据离线复现匹配和偏离计算 |
 
 脚本的统一调用形式建议为：

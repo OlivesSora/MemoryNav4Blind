@@ -40,3 +40,44 @@ anchors:
 
 voice:
   cooldown_s: 10.0
+
+segmentation:
+  # Map the tracked clock direction onto a bottom-center semicircle and
+  # compare it with a CAT-Seg walkable mask.  Masks are precomputed with
+  # memory_nav/scripts/precompute_walkable_masks.sh (catseg conda env).
+  # A forward hour is feasible when the nearest non-walkable pixel in its
+  # sector lies beyond radius_ratio*H (clear), allowing a tiny noise tolerance.
+  enabled: false
+  mask_dir: null
+  origin_x_ratio: 0.5
+  origin_y_ratio: 1.0
+  radius_ratio: 0.25
+  inner_radius_ratio: 0.05
+  half_width_deg: 15.0
+  max_obstacle_ratio: 0.005
+  command_tolerance_hours: 1
+  forward_hours: [9, 10, 11, 12, 1, 2, 3]
+  # Optional voice texts (used by the online guard).
+  messages:
+    no_walkable: "前方未检测到可通行区域，请停止前进"
+    no_walkable_rotate: "无可行区域，请旋转一下"
+  catseg_project_dir: /home/wheeltec/projects/blind-nav-server/CAT-Seg
+  catseg_config: configs/vitb_384.yaml
+  catseg_weights: model_base.pth
+  catseg_device: cuda
+  # Online mode (memory_nav/scripts/follow_reference_trajectory_seg.sh): a
+  # persistent CAT-Seg worker in the catseg conda env is started automatically
+  # and queried over a Unix socket. Inference is throttled and the navigation
+  # loop always reuses the latest mask.
+  online:
+    worker_python: /home/wheeltec/anaconda3/envs/catseg/bin/python
+    socket_path: null
+    device: cuda
+    input_scale: 0.5
+    min_size_test: 384
+    max_hz: 1.0
+    walkable_names: pavement,road,stairs
+    vis_dir: memory_nav/analysis/output/seg_online
+    vis_interval_s: 1.0
+    # Optional online-only judgment radius override; null keeps radius_ratio.
+    radius_ratio: null
