@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>follow-20260910_162722 · 跟随轨迹对比</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+         margin: 0; color: #1f2937; background: #f3f4f6; }
+  header { background: #111827; color: #fff; padding: 12px 18px; }
+  header h1 { margin: 0; font-size: 18px; }
+  header .summary { color: #9ca3af; font-size: 13px; margin-top: 2px; }
+  main { display: flex; gap: 16px; padding: 16px; align-items: flex-start; flex-wrap: wrap; }
+  #mapwrap { flex: 1 1 540px; min-width: 420px; background: #fff; border-radius: 8px;
+             padding: 10px; box-shadow: 0 1px 8px rgba(0,0,0,.12); }
+  #mapwrap svg { width: 100%; height: auto; background: #eef2f7; border-radius: 6px; }
+  #panel { flex: 1 1 340px; min-width: 300px; background: #fff; border-radius: 8px;
+            padding: 14px; box-shadow: 0 1px 8px rgba(0,0,0,.12); }
+  .legend { margin: 6px 0 10px; font-size: 12px; color: #4b5563; }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { padding: 4px 6px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+  thead th { position: sticky; top: 0; background: #f9fafb; }
+  .good { color: #15803d; font-weight: 600; }
+  .degraded { color: #d97706; font-weight: 600; }
+  .lost { color: #dc2626; font-weight: 600; }
+</style>
+</head>
+<body>
+<header>
+  <h1>跟随轨迹对比 · follow-20260910_162722</h1>
+  <div class="summary">参考轨迹 126 点（298.3 m）；
+  跟随 3 点（0.0 m）。点击表格行可查看横向/朝向误差。</div>
+</header>
+<main>
+  <div id="mapwrap">
+    <div class="legend">
+      <span><i class="swatch" style="background:#1976d2"></i> 参考轨迹（虚线）</span>
+      <span><i class="swatch" style="background:#ef6c00"></i> 跟随轨迹（颜色=误差）</span>
+      <span><i class="swatch" style="background:#15803d"></i> good ≤ 3m</span>
+      <span><i class="swatch" style="background:#d97706"></i> degraded ≤ 8m</span>
+      <span><i class="swatch" style="background:#dc2626"></i> lost &gt; 8m</span>
+    </div>
+    <svg viewBox="0 0 620 620" xmlns="http://www.w3.org/2000/svg"><path d="M 33.9,585.9 L 29.4,577.8 L 32.4,553.6 L 31.9,545.6 L 32.9,527.0 L 33.4,523.8 L 32.9,512.5 L 31.9,506.0 L 31.0,499.6 L 34.4,489.1 L 34.4,489.1 L 30.5,481.8 L 29.0,465.7 L 29.0,465.7 L 31.0,460.9 L 37.4,439.9 L 42.4,410.0 L 44.4,386.6 L 42.4,368.9 L 38.9,360.8 L 32.0,350.3 L 32.0,350.3 L 26.5,338.2 L 23.0,317.2 L 23.0,317.2 L 30.0,299.5 L 35.0,285.0 L 35.0,282.6 L 35.0,281.8 L 35.5,281.8 L 35.5,281.8 L 35.5,281.8 L 35.5,281.8 L 35.5,281.8 L 35.5,281.8 L 35.5,281.8 L 35.5,281.8 L 35.5,281.8 L 35.5,281.8 L 60.9,289.8 L 67.9,293.9 L 73.9,297.9 L 80.9,301.9 L 82.9,302.7 L 89.4,303.5 L 102.4,306.8 L 114.9,311.6 L 120.4,313.2 L 132.4,311.6 L 139.9,316.4 L 143.9,315.6 L 143.9,315.6 L 143.9,315.6 L 158.9,308.4 L 166.9,309.2 L 172.9,310.0 L 184.3,306.8 L 186.3,306.8 L 191.8,306.0 L 202.3,302.7 L 206.8,302.7 L 211.3,303.5 L 219.3,300.3 L 224.8,297.9 L 224.8,297.9 L 231.8,297.1 L 237.8,293.9 L 253.8,289.8 L 270.8,276.9 L 286.8,268.0 L 295.8,257.6 L 299.3,255.1 L 306.3,250.3 L 312.8,243.0 L 316.2,240.6 L 321.7,235.0 L 328.2,230.1 L 331.2,229.3 L 331.2,229.3 L 337.7,225.3 L 342.2,222.1 L 342.2,222.1 L 347.7,219.6 L 352.7,217.2 L 372.2,205.9 L 379.2,205.9 L 379.2,205.9 L 384.2,207.5 L 405.7,205.9 L 410.7,202.7 L 410.7,202.7 L 414.2,199.5 L 420.2,196.2 L 420.2,196.2 L 424.2,193.8 L 428.2,190.6 L 428.2,190.6 L 432.7,187.4 L 441.2,184.1 L 448.6,181.7 L 452.1,178.5 L 466.6,163.2 L 479.6,143.8 L 494.1,130.1 L 505.6,129.3 L 522.1,119.6 L 531.6,111.5 L 535.6,104.3 L 541.1,87.3 L 542.1,80.1 L 542.1,80.1 L 542.1,80.1 L 542.1,80.1 L 570.6,101.1 L 578.0,106.7 L 578.0,106.7 L 578.0,106.7 L 578.0,106.7 L 587.0,78.5 L 591.0,68.0 L 592.0,64.8 L 593.5,55.1 L 595.0,51.0 L 596.0,43.8 L 596.5,41.4 L 597.0,34.1" fill="none" stroke="#1976d2" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="6 4"/><line x1="107.7" y1="573.3" x2="107.7" y2="573.3" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="107.7" y1="573.3" x2="107.7" y2="573.3" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><circle cx="33.9" cy="585.9" r="6" fill="#1976d2" stroke="#fff" stroke-width="1.5"><title>ref_start</title></circle><circle cx="107.7" cy="573.3" r="6" fill="#ef6c00" stroke="#fff" stroke-width="1.5"><title>follow_start</title></circle></svg>
+  </div>
+  <div id="panel">
+    <table>
+      <tr><th>平均横向误差</th><td>25.36 m</td></tr>
+      <tr><th>中位横向误差</th><td>25.36 m</td></tr>
+      <tr><th>90 分位横向误差</th><td>25.36 m</td></tr>
+      <tr><th>最大横向误差</th><td>25.36 m</td></tr>
+      <tr><th>平均朝向误差</th><td>148.24°</td></tr>
+      <tr><th>good / degraded / lost</th><td>0.0 / 0.0 / 1.0</td></tr>
+    </table>
+  </div>
+</main>
+<section style="padding:0 16px 24px;">
+  <h3 style="margin:8px 0">逐点跟随指标</h3>
+  <div style="max-height:420px; overflow:auto; background:#fff; border-radius:8px; padding:8px; box-shadow:0 1px 8px rgba(0,0,0,.12);">
+    <table><thead><tr><th>#</th><th>时间</th><th>匹配</th><th>横向误差(m)</th><th>朝向误差(°)</th><th>参考进度(m)</th></tr></thead><tbody><tr><td>0</td><td>16:27:22</td><td class='lost'>lost</td><td>25.4</td><td>144.8</td><td>0.0</td></tr><tr><td>1</td><td>16:27:29</td><td class='lost'>lost</td><td>25.4</td><td>151.0</td><td>0.0</td></tr><tr><td>2</td><td>16:27:30</td><td class='lost'>lost</td><td>25.4</td><td>148.9</td><td>0.0</td></tr></tbody></table>
+  </div>
+</section>
+</body>
+</html>

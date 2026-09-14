@@ -19,14 +19,7 @@ quality:
   maximum_gps_gap_s: 5.0
   maximum_rejection_ratio: 0.5
 
-matching:
-  backward_window_m: 2.0
-  forward_window_m: 20.0
-  initial_search_m: 15.0
-  good_distance_m: 3.0
-  lost_distance_m: 8.0
-  heading_weight: 0.03
-  max_heading_error_deg: 100.0
+matching: {}
 
 deviation:
   warning_m: 3.0
@@ -47,6 +40,3 @@ anchors:
 
 voice:
   cooldown_s: 10.0
-  # Speak a steering direction only when the clock direction changes by at
-  # least this many steps (1 step = 30 deg) from the last spoken one.
-  direction_change_min_clocks: 2

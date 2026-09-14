@@ -238,7 +238,22 @@ bash memory_nav/scripts/hardware_acceptance.sh --help
 bash memory_nav/scripts/replay_offline.sh --help
 
 # 跟随suishi2接口：
-python3 -m memory_nav.replay.replay_nav   --route-id suishi-2   --config memory_nav/config/suishi-2.yaml   --voice   --imu-port /dev/imu
+# 先启动硬件网关：
+# 终端1：
+cd /home/wheeltec/projects/blind-nav-server
+python3 -m src.hardware_gateway
+# 终端2：
+cd /home/wheeltec/projects/blind-nav
+python3 client.py
+# 终端3：
+cd /home/wheeltec/projects/blind-nav
+python utils/gps_server.py
+
+# 记忆路线跟随启动命令：
+2python3 -m memory_nav.replay.replay_nav   --route-id suishi-2   --config memory_nav/config/suishi-2.yaml   --voice
+# 跟随 GPS 日志默认写入：
+# memory_nav/routes/suishi-2/follow_output/follow-时间戳/output.jsonl
+# 如需指定路径，追加：--follow-log /path/to/output.jsonl
 ```
 
 > 生成、构建、审核、跟随必须用**同一份配置**，尤其 `routes_dir`、坐标系、匹配阈值。

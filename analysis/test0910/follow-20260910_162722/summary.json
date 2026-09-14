@@ -1,0 +1,21 @@
+{
+  "follow_name": "follow-20260910_162722",
+  "reference_points": 126,
+  "reference_length_m": 298.3,
+  "follow_points": 3,
+  "follow_length_m": 0.0,
+  "cross_track_error_m": {
+    "mean": 25.36,
+    "median": 25.36,
+    "p90": 25.36,
+    "max": 25.36
+  },
+  "heading_error_deg": {
+    "mean_abs": 148.24
+  },
+  "quality_ratio": {
+    "good": 0.0,
+    "degraded": 0.0,
+    "lost": 1.0
+  }
+}

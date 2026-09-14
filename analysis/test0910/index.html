@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>跟随轨迹跟踪情况总览</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+         margin: 0; color: #1f2937; background: #f3f4f6; }
+  header { background: #111827; color: #fff; padding: 12px 18px; }
+  header h1 { margin: 0; font-size: 18px; }
+  header .summary { color: #9ca3af; font-size: 13px; margin-top: 2px; }
+  main { padding: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff;
+          border-radius: 8px; box-shadow: 0 1px 8px rgba(0,0,0,.12); overflow: hidden; }
+  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+  thead th { background: #f9fafb; position: sticky; top: 0; }
+  img { max-width: 100%; border-radius: 8px; box-shadow: 0 1px 8px rgba(0,0,0,.12); }
+</style>
+</head>
+<body>
+<header>
+  <h1>跟随轨迹跟踪情况总览 · suishi-2</h1>
+  <div class="summary">每条跟随轨迹相对参考轨迹（source/output_trimmed.jsonl）的横向误差与朝向误差。点击名称进入详情页。</div>
+</header>
+<main>
+  <table><thead><tr><th>跟随轨迹</th><th>点数</th><th>平均横向误差(m)</th><th>90分位横向误差(m)</th><th>平均朝向误差(°)</th><th>good</th><th>degraded</th><th>lost</th></tr></thead><tbody><tr><td><a href='follow-20260910_162722/follow_comparison.html'>follow-20260910_162722</a></td><td>3</td><td>25.36</td><td>25.36</td><td>148.24</td><td>0.0</td><td>0.0</td><td>1.0</td></tr><tr><td><a href='follow-20260910_162753/follow_comparison.html'>follow-20260910_162753</a></td><td>217</td><td>9.91</td><td>17.25</td><td>45.36</td><td>0.12</td><td>0.35</td><td>0.53</td></tr><tr><td><a href='follow-20260910_163428/follow_comparison.html'>follow-20260910_163428</a></td><td>204</td><td>7.25</td><td>17.41</td><td>51.19</td><td>0.324</td><td>0.363</td><td>0.314</td></tr><tr><td><a href='follow-20260910_164121/follow_comparison.html'>follow-20260910_164121</a></td><td>31</td><td>22.89</td><td>26.97</td><td>81.12</td><td>0.0</td><td>0.0</td><td>1.0</td></tr><tr><td><a href='follow-20260910_164313/follow_comparison.html'>follow-20260910_164313</a></td><td>138</td><td>21.75</td><td>31.8</td><td>106.85</td><td>0.014</td><td>0.029</td><td>0.957</td></tr><tr><td><a href='follow-20260910_164659/follow_comparison.html'>follow-20260910_164659</a></td><td>111</td><td>8.24</td><td>20.35</td><td>42.7</td><td>0.27</td><td>0.432</td><td>0.297</td></tr></tbody></table>
+  <h3 style="margin:20px 0 8px">全部轨迹叠加</h3>
+  <img src="overview.png" alt="overview">
+</main>
+</body>
+</html>

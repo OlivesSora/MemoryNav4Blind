@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>follow-20260910_164121 · 跟随轨迹对比</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+         margin: 0; color: #1f2937; background: #f3f4f6; }
+  header { background: #111827; color: #fff; padding: 12px 18px; }
+  header h1 { margin: 0; font-size: 18px; }
+  header .summary { color: #9ca3af; font-size: 13px; margin-top: 2px; }
+  main { display: flex; gap: 16px; padding: 16px; align-items: flex-start; flex-wrap: wrap; }
+  #mapwrap { flex: 1 1 540px; min-width: 420px; background: #fff; border-radius: 8px;
+             padding: 10px; box-shadow: 0 1px 8px rgba(0,0,0,.12); }
+  #mapwrap svg { width: 100%; height: auto; background: #eef2f7; border-radius: 6px; }
+  #panel { flex: 1 1 340px; min-width: 300px; background: #fff; border-radius: 8px;
+            padding: 14px; box-shadow: 0 1px 8px rgba(0,0,0,.12); }
+  .legend { margin: 6px 0 10px; font-size: 12px; color: #4b5563; }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { padding: 4px 6px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+  thead th { position: sticky; top: 0; background: #f9fafb; }
+  .good { color: #15803d; font-weight: 600; }
+  .degraded { color: #d97706; font-weight: 600; }
+  .lost { color: #dc2626; font-weight: 600; }
+</style>
+</head>
+<body>
+<header>
+  <h1>跟随轨迹对比 · follow-20260910_164121</h1>
+  <div class="summary">参考轨迹 126 点（298.3 m）；
+  跟随 31 点（22.1 m）。点击表格行可查看横向/朝向误差。</div>
+</header>
+<main>
+  <div id="mapwrap">
+    <div class="legend">
+      <span><i class="swatch" style="background:#1976d2"></i> 参考轨迹（虚线）</span>
+      <span><i class="swatch" style="background:#ef6c00"></i> 跟随轨迹（颜色=误差）</span>
+      <span><i class="swatch" style="background:#15803d"></i> good ≤ 3m</span>
+      <span><i class="swatch" style="background:#d97706"></i> degraded ≤ 8m</span>
+      <span><i class="swatch" style="background:#dc2626"></i> lost &gt; 8m</span>
+    </div>
+    <svg viewBox="0 0 620 620" xmlns="http://www.w3.org/2000/svg"><path d="M 33.9,585.9 L 29.4,577.8 L 32.4,553.6 L 31.9,545.6 L 32.9,527.0 L 33.4,523.8 L 32.9,512.5 L 31.9,506.0 L 31.0,499.6 L 34.4,489.1 L 34.4,489.1 L 30.5,481.8 L 29.0,465.7 L 29.0,465.7 L 31.0,460.9 L 37.4,439.9 L 42.4,410.0 L 44.4,386.6 L 42.4,368.9 L 38.9,360.8 L 32.0,350.3 L 32.0,350.3 L 26.5,338.2 L 23.0,317.2 L 23.0,317.2 L 30.0,299.5 L 35.0,285.0 L 35.0,282.6 L 35.0,281.8 L 35.5,281.8 L 35.5,281.8 L 35.5,281.8 L 35.5,281.8 L 35.5,281.8 L 35.5,281.8 L 35.5,281.8 L 35.5,281.8 L 35.5,281.8 L 35.5,281.8 L 60.9,289.8 L 67.9,293.9 L 73.9,297.9 L 80.9,301.9 L 82.9,302.7 L 89.4,303.5 L 102.4,306.8 L 114.9,311.6 L 120.4,313.2 L 132.4,311.6 L 139.9,316.4 L 143.9,315.6 L 143.9,315.6 L 143.9,315.6 L 158.9,308.4 L 166.9,309.2 L 172.9,310.0 L 184.3,306.8 L 186.3,306.8 L 191.8,306.0 L 202.3,302.7 L 206.8,302.7 L 211.3,303.5 L 219.3,300.3 L 224.8,297.9 L 224.8,297.9 L 231.8,297.1 L 237.8,293.9 L 253.8,289.8 L 270.8,276.9 L 286.8,268.0 L 295.8,257.6 L 299.3,255.1 L 306.3,250.3 L 312.8,243.0 L 316.2,240.6 L 321.7,235.0 L 328.2,230.1 L 331.2,229.3 L 331.2,229.3 L 337.7,225.3 L 342.2,222.1 L 342.2,222.1 L 347.7,219.6 L 352.7,217.2 L 372.2,205.9 L 379.2,205.9 L 379.2,205.9 L 384.2,207.5 L 405.7,205.9 L 410.7,202.7 L 410.7,202.7 L 414.2,199.5 L 420.2,196.2 L 420.2,196.2 L 424.2,193.8 L 428.2,190.6 L 428.2,190.6 L 432.7,187.4 L 441.2,184.1 L 448.6,181.7 L 452.1,178.5 L 466.6,163.2 L 479.6,143.8 L 494.1,130.1 L 505.6,129.3 L 522.1,119.6 L 531.6,111.5 L 535.6,104.3 L 541.1,87.3 L 542.1,80.1 L 542.1,80.1 L 542.1,80.1 L 542.1,80.1 L 570.6,101.1 L 578.0,106.7 L 578.0,106.7 L 578.0,106.7 L 578.0,106.7 L 587.0,78.5 L 591.0,68.0 L 592.0,64.8 L 593.5,55.1 L 595.0,51.0 L 596.0,43.8 L 596.5,41.4 L 597.0,34.1" fill="none" stroke="#1976d2" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="6 4"/><line x1="378.7" y1="89.7" x2="378.2" y2="88.1" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="378.2" y1="88.1" x2="378.7" y2="88.1" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="378.7" y1="88.1" x2="378.7" y2="88.1" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="378.7" y1="88.1" x2="377.7" y2="88.9" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="377.7" y1="88.9" x2="377.2" y2="91.4" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="377.2" y1="91.4" x2="376.2" y2="94.6" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="376.2" y1="94.6" x2="376.2" y2="94.6" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="376.2" y1="94.6" x2="376.2" y2="94.6" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="376.2" y1="94.6" x2="376.2" y2="94.6" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="376.2" y1="94.6" x2="372.2" y2="99.4" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="372.2" y1="99.4" x2="370.7" y2="97.0" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="370.7" y1="97.0" x2="370.7" y2="97.0" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="370.7" y1="97.0" x2="367.7" y2="92.2" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="367.7" y1="92.2" x2="367.2" y2="88.9" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="367.2" y1="88.9" x2="365.2" y2="89.7" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="365.2" y1="89.7" x2="364.2" y2="93.8" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="364.2" y1="93.8" x2="364.2" y2="93.8" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="364.2" y1="93.8" x2="363.2" y2="105.9" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="363.2" y1="105.9" x2="363.2" y2="105.9" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="363.2" y1="105.9" x2="364.7" y2="112.3" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="364.7" y1="112.3" x2="365.7" y2="116.4" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="365.7" y1="116.4" x2="366.7" y2="122.8" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="366.7" y1="122.8" x2="366.7" y2="122.8" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="366.7" y1="122.8" x2="369.2" y2="126.9" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="369.2" y1="126.9" x2="370.2" y2="130.1" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="370.2" y1="130.1" x2="371.2" y2="132.5" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="371.2" y1="132.5" x2="368.2" y2="139.8" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="368.2" y1="139.8" x2="368.2" y2="139.8" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="368.2" y1="139.8" x2="367.7" y2="141.4" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><line x1="367.7" y1="141.4" x2="366.2" y2="146.2" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/><circle cx="33.9" cy="585.9" r="6" fill="#1976d2" stroke="#fff" stroke-width="1.5"><title>ref_start</title></circle><circle cx="378.7" cy="89.7" r="6" fill="#ef6c00" stroke="#fff" stroke-width="1.5"><title>follow_start</title></circle></svg>
+  </div>
+  <div id="panel">
+    <table>
+      <tr><th>平均横向误差</th><td>22.89 m</td></tr>
+      <tr><th>中位横向误差</th><td>25.06 m</td></tr>
+      <tr><th>90 分位横向误差</th><td>26.97 m</td></tr>
+      <tr><th>最大横向误差</th><td>27.1 m</td></tr>
+      <tr><th>平均朝向误差</th><td>81.12°</td></tr>
+      <tr><th>good / degraded / lost</th><td>0.0 / 0.0 / 1.0</td></tr>
+    </table>
+  </div>
+</main>
+<section style="padding:0 16px 24px;">
+  <h3 style="margin:8px 0">逐点跟随指标</h3>
+  <div style="max-height:420px; overflow:auto; background:#fff; border-radius:8px; padding:8px; box-shadow:0 1px 8px rgba(0,0,0,.12);">
+    <table><thead><tr><th>#</th><th>时间</th><th>匹配</th><th>横向误差(m)</th><th>朝向误差(°)</th><th>参考进度(m)</th></tr></thead><tbody><tr><td>0</td><td>16:41:21</td><td class='lost'>lost</td><td>26.7</td><td>116.8</td><td>199.9</td></tr><tr><td>1</td><td>16:41:24</td><td class='lost'>lost</td><td>27.1</td><td>116.0</td><td>199.9</td></tr><tr><td>2</td><td>16:41:25</td><td class='lost'>lost</td><td>27.1</td><td>121.0</td><td>199.9</td></tr><tr><td>3</td><td>16:41:26</td><td class='lost'>lost</td><td>27.1</td><td>114.8</td><td>199.9</td></tr><tr><td>4</td><td>16:41:27</td><td class='lost'>lost</td><td>26.9</td><td>91.8</td><td>199.9</td></tr><tr><td>5</td><td>16:41:29</td><td class='lost'>lost</td><td>26.4</td><td>9.1</td><td>199.9</td></tr><tr><td>6</td><td>16:41:31</td><td class='lost'>lost</td><td>25.6</td><td>28.1</td><td>199.9</td></tr><tr><td>7</td><td>16:41:34</td><td class='lost'>lost</td><td>25.6</td><td>23.8</td><td>199.9</td></tr><tr><td>8</td><td>16:41:35</td><td class='lost'>lost</td><td>25.6</td><td>28.2</td><td>199.9</td></tr><tr><td>9</td><td>16:41:36</td><td class='lost'>lost</td><td>25.6</td><td>86.3</td><td>199.9</td></tr><tr><td>10</td><td>16:41:39</td><td class='lost'>lost</td><td>24.5</td><td>111.9</td><td>199.9</td></tr><tr><td>11</td><td>16:41:40</td><td class='lost'>lost</td><td>25.1</td><td>88.3</td><td>199.9</td></tr><tr><td>12</td><td>16:41:41</td><td class='lost'>lost</td><td>25.1</td><td>83.9</td><td>199.9</td></tr><tr><td>13</td><td>16:41:43</td><td class='lost'>lost</td><td>26.2</td><td>44.0</td><td>199.9</td></tr><tr><td>14</td><td>16:41:45</td><td class='lost'>lost</td><td>27.0</td><td>4.4</td><td>199.9</td></tr><tr><td>15</td><td>16:41:48</td><td class='lost'>lost</td><td>26.8</td><td>59.8</td><td>199.9</td></tr><tr><td>16</td><td>16:41:50</td><td class='lost'>lost</td><td>25.9</td><td>15.0</td><td>199.9</td></tr><tr><td>17</td><td>16:41:53</td><td class='lost'>lost</td><td>25.9</td><td>92.5</td><td>199.9</td></tr><tr><td>18</td><td>16:41:55</td><td class='lost'>lost</td><td>23.2</td><td>95.7</td><td>199.9</td></tr><tr><td>19</td><td>16:41:56</td><td class='lost'>lost</td><td>23.2</td><td>83.6</td><td>199.9</td></tr><tr><td>20</td><td>16:41:57</td><td class='lost'>lost</td><td>21.7</td><td>63.4</td><td>199.9</td></tr><tr><td>21</td><td>16:41:58</td><td class='lost'>lost</td><td>20.7</td><td>97.8</td><td>199.9</td></tr><tr><td>22</td><td>16:42:00</td><td class='lost'>lost</td><td>19.2</td><td>67.3</td><td>199.9</td></tr><tr><td>23</td><td>16:42:01</td><td class='lost'>lost</td><td>19.2</td><td>64.1</td><td>199.9</td></tr><tr><td>24</td><td>16:42:02</td><td class='lost'>lost</td><td>18.2</td><td>94.0</td><td>199.9</td></tr><tr><td>25</td><td>16:42:03</td><td class='lost'>lost</td><td>17.5</td><td>102.9</td><td>199.9</td></tr><tr><td>26</td><td>16:42:05</td><td class='lost'>lost</td><td>16.9</td><td>128.1</td><td>199.9</td></tr><tr><td>27</td><td>16:42:08</td><td class='lost'>lost</td><td>15.3</td><td>115.0</td><td>199.9</td></tr><tr><td>28</td><td>16:42:09</td><td class='lost'>lost</td><td>15.3</td><td>119.0</td><td>199.9</td></tr><tr><td>29</td><td>16:42:10</td><td class='lost'>lost</td><td>14.9</td><td>130.4</td><td>199.9</td></tr><tr><td>30</td><td>16:42:13</td><td class='lost'>lost</td><td>13.9</td><td>117.8</td><td>199.9</td></tr></tbody></table>
+  </div>
+</section>
+</body>
+</html>

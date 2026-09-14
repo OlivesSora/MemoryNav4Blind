@@ -64,7 +64,6 @@ def _validate(config: Mapping[str, Any]) -> None:
     positive = {
         "trajectory.resample_spacing_m": config["trajectory"]["resample_spacing_m"],
         "trajectory.max_speed_m_s": config["trajectory"]["max_speed_m_s"],
-        "matching.forward_window_m": config["matching"]["forward_window_m"],
         "quality.minimum_gps_samples": config["quality"]["minimum_gps_samples"],
         "quality.minimum_route_length_m": config["quality"]["minimum_route_length_m"],
         "quality.maximum_gps_gap_s": config["quality"]["maximum_gps_gap_s"],

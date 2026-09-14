@@ -3,18 +3,22 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import logging
+import math
+import os
 import signal
+import sys
 import time
 from dataclasses import asdict
+from datetime import datetime
 import cv2
 from pathlib import Path
 
 from memory_nav.config import load_config
 from memory_nav.models import ReferencePoint
 from memory_nav.recording.session_writer import validate_route_id
-from memory_nav.replay.deviation import DeviationMonitor
 from memory_nav.replay.matcher import RouteMatcher
 from memory_nav.replay.guidance import GuidanceController
 from memory_nav.recording.anchor_collector import load_anchors
@@ -24,7 +28,7 @@ from memory_nav.replay.anchor_matcher import XFeatAnchorMatcher
 from memory_nav.config import PROJECT_ROOT
 from memory_nav.vio import OnlineVioAligner, VioSubscriber
 from memory_nav.interaction.voice_prompt import Prompt
-from memory_nav.trajectory.coordinate import wrap_to_180
+from memory_nav.trajectory.coordinate import heading_from_delta, wrap_to_180
 
 
 def make_command(heading_deg: float, target_heading_deg: float, distance_m: float) -> tuple[str, str]:
@@ -32,15 +36,127 @@ def make_command(heading_deg: float, target_heading_deg: float, distance_m: floa
     relative = wrap_to_180(target_heading_deg - heading_deg)
     hour = round(relative / 30.0) % 12
     clock = str(hour or 12)
-    distance = max(0.0, float(distance_m))
     if abs(relative) <= 22.5:
-        return clock, f"{clock}点钟方向直行约{distance:.0f}米" if distance > 0.5 else f"{clock}点钟方向原地停住"
+        return clock, f"{clock}点钟方向直行"
     if abs(relative) > 120:
-        return clock, f"原地转至{clock}点钟方向，然后前进约{distance:.0f}米"
-    return clock, f"{clock}点钟方向前进约{distance:.0f}米"
+        return clock, f"原地转至{clock}点钟方向，然后前进"
+    return clock, f"{clock}点钟方向前进"
+
+
+def make_gps_action(heading_deg: float, target_heading_deg: float) -> str:
+    relative = wrap_to_180(target_heading_deg - heading_deg)
+    if abs(relative) <= 22.5:
+        return "直行"
+    if abs(relative) > 120:
+        return "掉头"
+    return "右转" if relative > 0 else "左转"
 
 
 LOGGER = logging.getLogger(__name__)
+BLIND_NAV_PROJECT_DIR = os.getenv(
+    "BLIND_NAV_PROJECT_DIR", "/home/wheeltec/projects/blind-nav-server"
+)
+
+
+def create_hardware_agent_client():
+    """Create the shared hardware-gateway client used by visual navigation."""
+    if BLIND_NAV_PROJECT_DIR not in sys.path:
+        sys.path.insert(0, BLIND_NAV_PROJECT_DIR)
+    from src.hardware_agent_client import HardwareAgentClient
+
+    return HardwareAgentClient()
+
+
+class HardwareGatewayGPS:
+    """Synchronous GPS adapter backed by the shared hardware gateway."""
+
+    def __init__(self, hardware_agent) -> None:
+        self._hardware_agent = hardware_agent
+
+    def get_gps(self):
+        return asyncio.run(self._hardware_agent.get_gps())
+
+
+class HardwareGatewayIMU:
+    """Synchronous heading adapter backed by the shared hardware gateway."""
+
+    def __init__(self, hardware_agent) -> None:
+        self._hardware_agent = hardware_agent
+
+    def get_heading(self):
+        return asyncio.run(self._hardware_agent.get_heading())
+
+    def stop(self) -> None:
+        pass
+
+
+class HardwareGatewayCamera:
+    """Camera adapter matching the local Camera.capture_frame interface."""
+
+    def __init__(self, hardware_agent) -> None:
+        self._hardware_agent = hardware_agent
+
+    def capture_frame(self):
+        return asyncio.run(self._hardware_agent.get_state_image(angle=0))
+
+    def release(self) -> None:
+        pass
+
+
+class FollowGPSLogger:
+    """Append follow samples in the outdoor_nav ``output.jsonl`` format."""
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._stream = self.path.open("a", encoding="utf-8", buffering=1)
+
+    def append(
+        self,
+        coordinate: list[float] | None,
+        heading_deg: float | None,
+        command: str | None = None,
+        command_clock: str | None = None,
+        gps_action: str | None = None,
+        target_heading_deg: float | None = None,
+        projected_position: tuple[float, float] | None = None,
+        target_position: tuple[float, float] | None = None,
+        match=None,
+        voice_queued: bool = False,
+    ) -> None:
+        record = {
+            "log_time": datetime.now().astimezone().isoformat(timespec="milliseconds"),
+            "camera_time_stamp": None,
+            "image_path": None,
+            "model_output_raw": None,
+            "guide": command,
+            "played": False,
+            "voice_queued": voice_queued,
+            "high_level_hint": None,
+            "gps_action": gps_action,
+            "raw_gps_action": gps_action,
+            "command_clock": command_clock,
+            "route_instruction": command,
+            "angle_diff": None if match is None else match.heading_error_deg,
+            "distance": None if match is None else match.distance_m,
+            "raw_imu_bearing": heading_deg,
+            "cur_bearing": heading_deg,
+            "heading_correction": 0.0,
+            "heading_correction_updated": False,
+            "gps_course_bearing": None,
+            "gps_heading_track_distance": 0.0,
+            "target_bearing": target_heading_deg,
+            "current_pos": coordinate,
+            "projected_pos": None if projected_position is None else list(projected_position),
+            "lookahead_point": None if target_position is None else list(target_position),
+            "route_progress": None if match is None else match.matched_s_m,
+            "cross_track_error": None if match is None else match.cross_track_error_m,
+        }
+        self._stream.write(json.dumps(record, ensure_ascii=False) + "\n")
+        self._stream.flush()
+
+    def close(self) -> None:
+        self._stream.close()
 
 
 def validate_ready_route(route_dir: Path) -> None:
@@ -58,12 +174,11 @@ def validate_ready_route(route_dir: Path) -> None:
 
 
 class ReplayRunner:
-    def __init__(self, route_dir: Path, config: dict, gps=None, imu=None, speaker=None, camera=None, visual_matcher=None, vio=None, voice_directions: bool = False):
+    def __init__(self, route_dir: Path, config: dict, gps=None, imu=None, speaker=None, camera=None, visual_matcher=None, vio=None, voice_directions: bool = False, follow_log_path: Path | None = None):
         self.route_dir = route_dir
         route = json.loads((route_dir / "reference_trajectory.json").read_text(encoding="utf-8"))
         self.frame = LocalFrame(route["origin"]["longitude"], route["origin"]["latitude"])
         self.matcher = RouteMatcher([ReferencePoint(**point) for point in route["points"]], **config["matching"])
-        self.monitor = DeviationMonitor(**config["deviation"])
         self.arrival_distance_m = float(config["anchors"]["arrival_distance_m"])
         anchors_path = route_dir / "anchors.json"
         anchors = load_anchors(anchors_path) if anchors_path.is_file() else []
@@ -86,15 +201,12 @@ class ReplayRunner:
         self.gps = gps
         self.imu = imu
         self.vio = vio
+        self.follow_logger = None if follow_log_path is None else FollowGPSLogger(follow_log_path)
         self.vio_aligner = None if vio is None else OnlineVioAligner(
             minimum_pairs=int(config["vio"]["online_minimum_pairs"]),
             max_rms_m=float(config["vio"]["maximum_alignment_rms_m"]),
         )
         self.running = True
-        self._last_spoken_clock: int | None = None
-        self._direction_min_clocks = max(
-            1, int(config["voice"].get("direction_change_min_clocks", 2))
-        )
 
     def step(self) -> dict | None:
         get_sample = getattr(self.gps, "get_sample", None)
@@ -110,10 +222,11 @@ class ReplayRunner:
             source = "rtk" if gps_state == "good" else "phone"
         heading = self.imu.get_heading()
         if coordinate is None or heading is None:
-            update = self.monitor.update(None, "lost")
-            guidance = self.guidance.update(None, update.state.value, None, True, time.monotonic())
+            guidance = self.guidance.update(None, "following", None, False, time.monotonic())
             self._play(guidance.prompts)
-            return {"navigation_state": update.state.value, "match_quality": "lost", "pause_progress": True, "prompts": [asdict(prompt) for prompt in guidance.prompts]}
+            if self.follow_logger is not None:
+                self.follow_logger.append(coordinate, heading)
+            return {"navigation_state": "following", "match_quality": "unavailable", "pause_progress": False, "prompts": [asdict(prompt) for prompt in guidance.prompts]}
         east, north = self.frame.to_local(float(coordinate[0]), float(coordinate[1]))
         vio_sample = None if self.vio is None else self.vio.latest()
         if self.vio_aligner is not None:
@@ -122,42 +235,54 @@ class ReplayRunner:
             if projected is not None:
                 east, north = projected
         match = self.matcher.match(east, north, float(heading))
-        target_s = min(match.matched_s_m + 8.0, self.matcher.points[-1].s_m)
-        target = self.matcher.points[-1]
-        for low, high in zip(self.matcher.points, self.matcher.points[1:]):
-            if low.s_m <= target_s <= high.s_m:
-                ratio = (target_s - low.s_m) / max(high.s_m - low.s_m, 1e-9)
-                target_heading = (low.heading_deg + ratio * ((high.heading_deg - low.heading_deg + 180) % 360 - 180)) % 360
-                break
-        else:
+        points = self.matcher.points
+        nearest_index = min(
+            range(len(points)),
+            key=lambda i: (points[i].east_m - east) ** 2 + (points[i].north_m - north) ** 2,
+        )
+        target_index = min(nearest_index + 1, len(points) - 1)
+        target = points[target_index]
+        target_east, target_north = target.east_m, target.north_m
+        delta_east = target_east - east
+        delta_north = target_north - north
+        if delta_east == 0 and delta_north == 0:
             target_heading = target.heading_deg
-        command_clock, command_text = make_command(float(heading), target_heading, target_s - match.matched_s_m)
-        update = self.monitor.update(match.cross_track_error_m, match.match_quality, source)
-        if match.match_quality == "good" and self.matcher.is_complete(self.arrival_distance_m):
-            update = self.monitor.complete()
-        guidance = self.guidance.update(match.matched_s_m, update.state.value, match.cross_track_error_m, update.pause_progress, time.monotonic())
+        else:
+            target_heading = heading_from_delta(delta_east, delta_north)
+        command_clock, command_text = make_command(
+            float(heading), target_heading, math.hypot(delta_east, delta_north)
+        )
+        gps_action = make_gps_action(float(heading), target_heading)
+        navigation_state = "completed" if self.matcher.is_complete(self.arrival_distance_m) else "following"
+        pause_progress = navigation_state == "completed"
+        guidance = self.guidance.update(match.matched_s_m, navigation_state, match.cross_track_error_m, pause_progress, time.monotonic())
         self._play(guidance.prompts)
         emitted_prompts = list(guidance.prompts)
-        if self.voice_directions and self.voice_worker is not None and update.state.value in ("normal", "recovering", "degraded"):
-            cur_clock = int(command_clock)
-            if self._last_spoken_clock is None:
-                clock_changed = True
-            else:
-                delta = abs(cur_clock - self._last_spoken_clock)
-                clock_changed = min(delta, 12 - delta) >= self._direction_min_clocks
-            if clock_changed:
-                direction_prompt = self.guidance.scheduler.request(
-                    Prompt(f"direction:{command_clock}", command_text, 2), time.monotonic()
-                )
-                if direction_prompt:
-                    self._play((direction_prompt,))
-                    emitted_prompts.append(direction_prompt)
-                    self._last_spoken_clock = cur_clock
+        if self.voice_directions and self.voice_worker is not None and navigation_state != "completed":
+            direction_prompt = self.guidance.scheduler.request(
+                Prompt(f"direction:{command_clock}", command_text, 2), time.monotonic()
+            )
+            if direction_prompt:
+                self._play((direction_prompt,))
+                emitted_prompts.append(direction_prompt)
         visual_result = self._verify_anchor(guidance.visual_anchor)
+        if self.follow_logger is not None:
+            self.follow_logger.append(
+                coordinate,
+                float(heading),
+                command_text,
+                command_clock,
+                gps_action,
+                target_heading,
+                self.frame.to_geodetic(match.east_m, match.north_m),
+                self.frame.to_geodetic(target_east, target_north),
+                match,
+                bool(emitted_prompts),
+            )
         return {
             **match.to_dict(),
-            "navigation_state": update.state.value,
-            "pause_progress": update.pause_progress,
+            "navigation_state": navigation_state,
+            "pause_progress": pause_progress,
             "gps_source": source,
             "next_anchor_id": guidance.next_anchor_id,
             "distance_to_next_anchor_m": guidance.distance_to_next_anchor_m,
@@ -200,6 +325,8 @@ class ReplayRunner:
     def close(self) -> None:
         if self.voice_worker is not None:
             self.voice_worker.close()
+        if self.follow_logger is not None:
+            self.follow_logger.close()
         release = getattr(self.camera, "release", None)
         if release:
             release()
@@ -215,11 +342,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--route-id", required=True)
     parser.add_argument("--config")
     parser.add_argument("--interval", type=float, default=0.2)
-    parser.add_argument("--voice", action="store_true", help="play prompts through utils.voice")
+    parser.add_argument("--voice", action="store_true", help="play prompts through the hardware gateway")
     parser.add_argument("--visual-anchors", action="store_true", help="verify anchor images with the local XFeat model")
     parser.add_argument("--vio-topic", help="subscribe to live VINS odometry on this ROS 2 topic")
     parser.add_argument("--ros-image-topic", help="subscribe to the VINS ROS image topic for visual anchors")
-    parser.add_argument("--imu-port", default="/dev/imu")
+    parser.add_argument("--follow-log", type=Path, help="write following GPS samples in outdoor_nav output.jsonl format")
     args = parser.parse_args(argv)
     if args.interval <= 0:
         parser.error("--interval must be positive")
@@ -230,11 +357,17 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         parser.error(str(exc))
     logging.basicConfig(level=logging.INFO)
+    follow_log_path = args.follow_log or (
+        route_dir / "follow_output" / f"follow-{datetime.now().strftime('%Y%m%d_%H%M%S')}" / "output.jsonl"
+    )
+    hardware_agent = create_hardware_agent_client()
+    gps = HardwareGatewayGPS(hardware_agent)
+    imu = HardwareGatewayIMU(hardware_agent)
     speaker = None
     if args.voice:
-        from utils.voice import TextToSpeechPlayer
-
-        speaker = TextToSpeechPlayer(output_dir=str(route_dir / "tts_cache")).say
+        speaker = lambda text: asyncio.run(
+            hardware_agent.play_text(text, need_feedback=False)
+        )
     camera = visual_matcher = vio = None
     if args.visual_anchors and args.ros_image_topic and args.vio_topic:
         vio = VioSubscriber(args.vio_topic, image_topic=args.ros_image_topic)
@@ -242,22 +375,13 @@ def main(argv: list[str] | None = None) -> int:
         camera = vio
         visual_matcher = XFeatAnchorMatcher(PROJECT_ROOT)
     elif args.visual_anchors:
-        from utils.glasses_camera import Camera
-
-        camera = Camera()
+        camera = HardwareGatewayCamera(hardware_agent)
         visual_matcher = XFeatAnchorMatcher(PROJECT_ROOT)
     if args.vio_topic and vio is None:
         vio = VioSubscriber(args.vio_topic)
         vio.start()
-    if args.vio_topic:
-        # VINS bridge owns /dev/imu and publishes /imu0; subscribe instead of
-        # reopening the serial port (avoids double-read contention).
-        from memory_nav.vio import ImuSubscriber
-        imu = ImuSubscriber("/imu0")
-    else:
-        from utils.imu import IMU
-        imu = IMU(port=args.imu_port)
-    runner = ReplayRunner(route_dir, config, imu=imu, speaker=speaker, camera=camera, visual_matcher=visual_matcher, vio=vio, voice_directions=args.voice)
+    runner = ReplayRunner(route_dir, config, gps=gps, imu=imu, speaker=speaker, camera=camera, visual_matcher=visual_matcher, vio=vio, voice_directions=args.voice, follow_log_path=follow_log_path)
+    LOGGER.info("recording follow GPS to %s", follow_log_path)
     signal.signal(signal.SIGINT, lambda *_: setattr(runner, "running", False))
     signal.signal(signal.SIGTERM, lambda *_: setattr(runner, "running", False))
     try:

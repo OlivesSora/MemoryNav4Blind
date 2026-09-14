@@ -97,16 +97,38 @@ class ReplayRunnerTests(unittest.TestCase):
             self.assertTrue(any(item["key"].startswith("direction:") for item in result["prompts"]))
             self.assertIn(result["command"], spoken)
 
-    def test_online_runner_reports_lost_without_advancing_anchor(self):
+    def test_following_writes_outdoor_nav_compatible_gps_log(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            frame = self.make_route(root)
+            position = frame.to_geodetic(3, 0)
+            log_path = root / "follow_output" / "follow-test" / "output.jsonl"
+            runner = ReplayRunner(
+                root,
+                load_config(),
+                gps=FakeGPS([(list(position), "good")]),
+                imu=FakeIMU([90]),
+                follow_log_path=log_path,
+            )
+            runner.step()
+            runner.close()
+            record = json.loads(log_path.read_text(encoding="utf-8").strip())
+            self.assertEqual(record["current_pos"], list(position))
+            self.assertEqual(record["raw_imu_bearing"], 90.0)
+            self.assertIn("log_time", record)
+            self.assertIn("route_progress", record)
+            self.assertIn("cross_track_error", record)
+
+    def test_online_runner_stays_in_following_state_without_sensor_data(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             self.make_route(root)
             runner = ReplayRunner(root, load_config(), gps=FakeGPS([(None, None)]), imu=FakeIMU([None]))
             result = runner.step()
             runner.close()
-            self.assertEqual(result["navigation_state"], "lost")
-            self.assertTrue(result["pause_progress"])
-            self.assertEqual(result["prompts"][0]["key"], "state:lost")
+            self.assertEqual(result["navigation_state"], "following")
+            self.assertFalse(result["pause_progress"])
+            self.assertEqual(result["prompts"], [])
 
     def test_phone_source_is_not_inferred_from_good_state(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -121,9 +143,9 @@ class ReplayRunnerTests(unittest.TestCase):
             result = runner.step()
             runner.close()
             self.assertEqual(result["gps_source"], "phone")
-            # 4m would become deviated after three RTK samples but remains
-            # only degraded inside the phone threshold (6m).
-            self.assertEqual(result["navigation_state"], "degraded")
+            # With match-distance quality gates disabled, the 4 m phone
+            # offset remains inside the widened deviation threshold (6 m).
+            self.assertEqual(result["navigation_state"], "following")
 
     def test_visual_anchor_success_and_failure_are_non_blocking(self):
         class Camera:
@@ -150,7 +172,7 @@ class ReplayRunnerTests(unittest.TestCase):
             result = runner.step()
             runner.close()
             self.assertTrue(result["visual_anchor"]["matched"])
-            self.assertEqual(result["navigation_state"], "normal")
+            self.assertEqual(result["navigation_state"], "following")
             self.assertTrue(camera.released)
 
         with tempfile.TemporaryDirectory() as directory:
@@ -162,7 +184,7 @@ class ReplayRunnerTests(unittest.TestCase):
             result = runner.step()
             runner.close()
             self.assertFalse(result["visual_anchor"]["matched"])
-            self.assertEqual(result["navigation_state"], "normal")
+            self.assertEqual(result["navigation_state"], "following")
 
     def test_low_quality_route_is_rejected_before_hardware_start(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -64,44 +64,22 @@ class RouteMatcher:
         return self.last_s_m is not None and self.last_s_m >= self.points[-1].s_m - tolerance_m
 
     def _candidate_indices(self) -> range:
-        if self.last_s_m is None:
-            indices = [index for index in range(len(self.points) - 1) if self.points[index].s_m <= self.initial_search_m]
-            return range(indices[0], indices[-1] + 1) if indices else range(0)
-        minimum = self.last_s_m - self.backward_window_m
-        maximum = self.last_s_m + self.forward_window_m
-        indices = [i for i in range(len(self.points) - 1) if self.points[i + 1].s_m >= minimum and self.points[i].s_m <= maximum]
-        return range(indices[0], indices[-1] + 1) if indices else range(0)
+        # Replay must keep returning guidance even when the user starts far
+        # from the recorded route, so always consider the complete route.
+        return range(len(self.points) - 1)
 
     def match(self, east_m: float, north_m: float, heading_deg: float) -> MatchResult:
         best = None
         for index in self._candidate_indices():
             start, end = self.points[index], self.points[index + 1]
             projected_east, projected_north, cross_track, distance, s_m = project_to_segment(east_m, north_m, start, end)
-            if self.last_s_m is None and s_m > self.initial_search_m:
-                continue
             segment_heading = heading_from_delta(end.east_m - start.east_m, end.north_m - start.north_m)
             heading_error = wrap_to_180(heading_deg - segment_heading)
-            if abs(heading_error) > self.max_heading_error_deg:
-                heading_penalty = 1000.0
-            else:
-                heading_penalty = self.heading_weight * abs(heading_error)
-            backwards_penalty = 0.0
-            if self.last_s_m is not None and s_m < self.last_s_m:
-                backwards_penalty = (self.last_s_m - s_m) * 2.0
-            score = distance + heading_penalty + backwards_penalty
+            score = distance
             if best is None or score < best[0]:
                 best = (score, index, projected_east, projected_north, cross_track, distance, s_m, heading_error)
         if best is None:
             raise RuntimeError("no route segment in progress window")
         _, index, projected_east, projected_north, cross_track, distance, s_m, heading_error = best
-        if self.last_s_m is None and (distance > self.initial_search_m or abs(heading_error) > self.max_heading_error_deg):
-            quality = "lost"
-        elif distance <= self.good_distance_m:
-            quality = "good"
-        elif distance <= self.lost_distance_m:
-            quality = "degraded"
-        else:
-            quality = "lost"
-        if quality != "lost":
-            self.last_s_m = s_m if self.last_s_m is None else max(self.last_s_m, s_m)
-        return MatchResult(index, s_m, projected_east, projected_north, cross_track, heading_error, distance, quality)
+        self.last_s_m = s_m if self.last_s_m is None else max(self.last_s_m, s_m)
+        return MatchResult(index, s_m, projected_east, projected_north, cross_track, heading_error, distance, "good")

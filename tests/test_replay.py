@@ -40,13 +40,13 @@ class MatcherTests(unittest.TestCase):
         self.assertTrue(matcher.is_complete(2))
         self.assertFalse(matcher.is_complete(0.5))
 
-    def test_initial_match_cannot_jump_beyond_start_window(self):
+    def test_initial_match_uses_nearest_segment_regardless_of_offset(self):
         long_route = [point(index, float(index * 10), 0, float(index * 10)) for index in range(11)]
         matcher = RouteMatcher(long_route, initial_search_m=15, lost_distance_m=8)
         result = matcher.match(95, 0, 90)
-        self.assertEqual(result.match_quality, "lost")
-        self.assertLessEqual(result.matched_s_m, 15)
-        self.assertIsNone(matcher.last_s_m)
+        self.assertEqual(result.match_quality, "good")
+        self.assertAlmostEqual(result.matched_s_m, 95)
+        self.assertEqual(matcher.last_s_m, result.matched_s_m)
 
 
 class DeviationTests(unittest.TestCase):
