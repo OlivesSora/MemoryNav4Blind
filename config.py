@@ -78,3 +78,62 @@ def _validate(config: Mapping[str, Any]) -> None:
     ratio = config["quality"]["maximum_rejection_ratio"]
     if not isinstance(ratio, (int, float)) or not 0 <= ratio < 1:
         raise ConfigError("quality.maximum_rejection_ratio must be in [0, 1)")
+    _validate_segmentation(config)
+
+
+def _validate_segmentation(config: Mapping[str, Any]) -> None:
+    segmentation = config.get("segmentation")
+    if segmentation is None:
+        return
+    if not isinstance(segmentation, Mapping):
+        raise ConfigError("segmentation must be a mapping")
+    for key in ("origin_x_ratio", "origin_y_ratio"):
+        value = segmentation.get(key, 0.5)
+        if not isinstance(value, (int, float)) or not 0.0 <= value <= 1.0:
+            raise ConfigError(f"segmentation.{key} must be in [0, 1]")
+    radius = segmentation.get("radius_ratio", 0.25)
+    if not isinstance(radius, (int, float)) or radius <= 0:
+        raise ConfigError("segmentation.radius_ratio must be positive")
+    inner = segmentation.get("inner_radius_ratio", 0.05)
+    if not isinstance(inner, (int, float)) or not 0.0 <= inner < radius:
+        raise ConfigError("segmentation.inner_radius_ratio must be in [0, radius_ratio)")
+    obstacle_ratio = segmentation.get("max_obstacle_ratio", 0.005)
+    if not isinstance(obstacle_ratio, (int, float)) or not 0.0 <= obstacle_ratio <= 1.0:
+        raise ConfigError("segmentation.max_obstacle_ratio must be in [0, 1]")
+    tolerance = segmentation.get("command_tolerance_hours", 1)
+    if not isinstance(tolerance, int) or tolerance < 0:
+        raise ConfigError("segmentation.command_tolerance_hours must be a non-negative integer")
+    forward = segmentation.get("forward_hours", [9, 10, 11, 12, 1, 2, 3])
+    if not forward:
+        raise ConfigError("segmentation.forward_hours cannot be empty")
+    messages = segmentation.get("messages")
+    if messages is not None:
+        if not isinstance(messages, Mapping):
+            raise ConfigError("segmentation.messages must be a mapping")
+        for key in ("no_walkable", "no_walkable_rotate"):
+            value = messages.get(key)
+            if value is not None and not isinstance(value, str):
+                raise ConfigError(f"segmentation.messages.{key} must be a string")
+    online = segmentation.get("online")
+    if online is None:
+        return
+    if not isinstance(online, Mapping):
+        raise ConfigError("segmentation.online must be a mapping")
+    scale = online.get("input_scale", 0.5)
+    if not isinstance(scale, (int, float)) or not 0.0 < scale <= 1.0:
+        raise ConfigError("segmentation.online.input_scale must be in (0, 1]")
+    max_hz = online.get("max_hz", 1.0)
+    if not isinstance(max_hz, (int, float)) or max_hz <= 0:
+        raise ConfigError("segmentation.online.max_hz must be positive")
+    vis_interval = online.get("vis_interval_s", 1.0)
+    if not isinstance(vis_interval, (int, float)) or vis_interval < 0:
+        raise ConfigError("segmentation.online.vis_interval_s cannot be negative")
+    min_size = online.get("min_size_test")
+    if min_size is not None and (not isinstance(min_size, int) or min_size <= 0):
+        raise ConfigError("segmentation.online.min_size_test must be a positive integer")
+    online_radius = online.get("radius_ratio")
+    if online_radius is not None:
+        if not isinstance(online_radius, (int, float)) or online_radius <= 0:
+            raise ConfigError("segmentation.online.radius_ratio must be positive")
+        if online_radius <= inner:
+            raise ConfigError("segmentation.online.radius_ratio must exceed inner_radius_ratio")
