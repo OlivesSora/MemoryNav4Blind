@@ -99,3 +99,36 @@ def draw_segmentation(
         cv2.putText(canvas, line, (8, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 3, cv2.LINE_AA)
         cv2.putText(canvas, line, (8, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, TEXT_COLOR, 1, cv2.LINE_AA)
     return canvas
+
+
+def draw_mask_overlay(
+    frame_bgr: np.ndarray,
+    mapper: SemicircleMapper,
+    walkable_mask: np.ndarray,
+    label: str = "pose_unavailable [mask only]",
+) -> np.ndarray:
+    """Return a copy of ``frame_bgr`` tinted with the walkable mask.
+
+    Unlike :func:`draw_segmentation` this needs no tracked command, so it is
+    used when the navigation pose is unavailable.
+    """
+    canvas = np.asarray(frame_bgr).copy()
+    if canvas.ndim != 3 or canvas.shape[2] != 3:
+        raise ValueError("frame_bgr must be an HxWx3 BGR image")
+    height, width = canvas.shape[:2]
+    mask = np.asarray(walkable_mask).astype(bool)
+    if mask.shape[:2] != (height, width):
+        mask = cv2.resize(
+            mask.astype(np.uint8) * 255,
+            (width, height),
+            interpolation=cv2.INTER_NEAREST,
+        ) > 127
+    tint = np.zeros_like(canvas)
+    tint[mask] = WALKABLE_COLOR
+    canvas = cv2.addWeighted(canvas, 1.0, tint, 0.35, 0.0)
+    cv2.polylines(canvas, [mapper.arc_points(mask)], False, ARC_COLOR, 2, cv2.LINE_AA)
+    cx, cy = mapper.origin(mask)
+    cv2.circle(canvas, (int(round(cx)), int(round(cy))), 3, CLEAR_COLOR, -1, cv2.LINE_AA)
+    cv2.putText(canvas, label, (8, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 3, cv2.LINE_AA)
+    cv2.putText(canvas, label, (8, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, TEXT_COLOR, 1, cv2.LINE_AA)
+    return canvas

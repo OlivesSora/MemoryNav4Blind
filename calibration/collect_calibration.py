@@ -27,6 +27,7 @@ class CalibrationCollector:
         self.frames_path = self.output_dir / "frames.jsonl"
         self._frame_index = 0
         self._last_imu_time = None
+        self._last_frame_time = None
 
     @staticmethod
     def _append(path: Path, record: dict) -> None:
@@ -51,6 +52,46 @@ class CalibrationCollector:
         self._last_imu_time = device_time
         return True
 
+    def capture_pending_imu(self) -> int:
+        """Write all raw IMU frames when the adapter exposes a frame buffer."""
+        drain = getattr(self.imu, "drain_imu_samples", None)
+        if drain is None:
+            return int(self.capture_imu(time.monotonic_ns()))
+
+        records = []
+        csv_rows = []
+        for sample in drain():
+            device_time = sample.get("device_time_s")
+            gyro = sample.get("gyro_rad_s")
+            accel = sample.get("accel_m_s2")
+            monotonic_ns = sample.get("monotonic_ns")
+            if (
+                device_time is None
+                or device_time == self._last_imu_time
+                or gyro is None
+                or accel is None
+                or monotonic_ns is None
+            ):
+                continue
+            records.append({
+                "monotonic_ns": monotonic_ns,
+                "device_time_s": device_time,
+                "gyro_rad_s": list(gyro),
+                "accel_m_s2": list(accel),
+            })
+            csv_rows.append([monotonic_ns, *gyro, *accel])
+            self._last_imu_time = device_time
+
+        if not records:
+            return 0
+        with self.imu_path.open("a", encoding="utf-8") as stream:
+            for record in records:
+                stream.write(json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n")
+        with self.imu_csv_path.open("a", encoding="utf-8") as stream:
+            for values in csv_rows:
+                stream.write(",".join(str(value) for value in values) + "\n")
+        return len(records)
+
     def capture_frame(self, monotonic_ns: int, width: int | None = None, height: int | None = None) -> bool:
         capture_with_metadata = getattr(self.camera, "capture_frame_with_metadata", None)
         if capture_with_metadata is not None:
@@ -60,6 +101,8 @@ class CalibrationCollector:
         else:
             image, source_frame = self.camera.capture_frame(width=width, height=height) if width is not None else self.camera.capture_frame()
         if image is None:
+            return False
+        if monotonic_ns == self._last_frame_time:
             return False
         filename = f"{monotonic_ns}.png"
         # Existing camera adapters return RGB.
@@ -77,6 +120,7 @@ class CalibrationCollector:
             "height": int(image.shape[0]),
         })
         self._frame_index += 1
+        self._last_frame_time = monotonic_ns
         return True
 
 
@@ -111,12 +155,13 @@ def main(argv: list[str] | None = None) -> int:
         while running and time.monotonic() - started < args.duration:
             now = time.monotonic()
             timestamp = time.monotonic_ns()
-            collector.capture_imu(timestamp)
+            collector.capture_pending_imu()
             if now >= next_frame:
                 collector.capture_frame(timestamp, args.width, args.height)
                 next_frame += 1.0 / args.image_fps
             time.sleep(0.002)
     finally:
+        collector.capture_pending_imu()
         imu.stop()
         camera.release()
     return 0

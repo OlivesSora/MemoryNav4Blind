@@ -16,6 +16,7 @@ from memory_nav.segmentation.online_provider import (
 from memory_nav.segmentation.online_visualizer import SegmentationFrameSaver
 from memory_nav.segmentation.protocol import recv_message, send_message
 from memory_nav.segmentation.providers import CachedMaskProvider
+from memory_nav.segmentation.visualize import draw_mask_overlay
 
 
 def left_half_mask(height=100, width=100):
@@ -126,6 +127,40 @@ class GuardVisualizerTests(unittest.TestCase):
         self.assertEqual(calls, [])
 
 
+class GuardObserveTests(unittest.TestCase):
+    def test_observe_returns_starting_without_mask(self):
+        guard = SegmentationGuard(
+            SegmentationAvoidance(SegmentationConfig()), NullMaskProvider()
+        )
+        status = guard.observe("frame_1", np.zeros((10, 10, 3), dtype=np.uint8))
+        self.assertEqual(status, {"status": "starting", "mask_ready": False})
+
+    def test_observe_visualizes_mask_without_command(self):
+        calls = []
+
+        class Visualizer:
+            def save_mask(self, frame, mapper, mask):
+                calls.append((frame.shape, mask.shape))
+
+        guard = SegmentationGuard(
+            SegmentationAvoidance(SegmentationConfig()),
+            StaticProvider(left_half_mask()),
+            visualizer=Visualizer(),
+        )
+        frame = np.zeros((100, 100, 3), dtype=np.uint8)
+        status = guard.observe("frame_1", frame)
+        self.assertEqual(status, {"status": "pose_unavailable", "mask_ready": True})
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][1], (100, 100))
+
+    def test_draw_mask_overlay_handles_both_masks(self):
+        mapper = SegmentationAvoidance(SegmentationConfig()).mapper
+        frame = np.zeros((100, 100, 3), dtype=np.uint8)
+        for mask in (np.ones((100, 100), dtype=bool), np.zeros((100, 100), dtype=bool)):
+            annotated = draw_mask_overlay(frame, mapper, mask)
+            self.assertEqual(annotated.shape, frame.shape)
+
+
 class BuildGuardTests(unittest.TestCase):
     def test_online_mode_selects_worker_provider_and_visualizer(self):
         from memory_nav.config import load_config
@@ -213,6 +248,17 @@ class VisualizerTests(unittest.TestCase):
             frame = np.zeros((100, 100, 3), dtype=np.uint8)
             frame[:, :, 0] = 200
             saver(frame, result, mapper, left_half_mask())
+            saved = cv2.imread(str(next(Path(directory).glob("seg_*.jpg"))))
+            self.assertIsNotNone(saved)
+            saver.close()
+
+    def test_saver_save_mask_writes_frame(self):
+        with tempfile.TemporaryDirectory() as directory:
+            saver = SegmentationFrameSaver(directory, interval_s=0.0)
+            mapper = SegmentationAvoidance(SegmentationConfig()).mapper
+            frame = np.zeros((100, 100, 3), dtype=np.uint8)
+            saver.save_mask(frame, mapper, left_half_mask())
+            self.assertEqual(saver.saved_count, 1)
             saved = cv2.imread(str(next(Path(directory).glob("seg_*.jpg"))))
             self.assertIsNotNone(saved)
             saver.close()

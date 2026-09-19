@@ -176,10 +176,23 @@ def main(argv: list[str] | None = None) -> int:
         validate_ready_route(route_dir)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         raise SystemExit(str(exc))
+    logging.basicConfig(level=logging.INFO)
     guard = build_guard(args, config)
     if guard is None:
         LOGGER.warning("no segmentation source configured; running without avoidance")
-    logging.basicConfig(level=logging.INFO)
+    elif args.seg_online:
+        start = getattr(guard.provider, "start", None)
+        if start is not None:
+            try:
+                start()
+                LOGGER.info(
+                    "CAT-Seg worker startup requested: python=%s catseg_dir=%s socket=%s",
+                    getattr(guard.provider, "worker_python", "?"),
+                    getattr(guard.provider, "catseg_dir", "?"),
+                    getattr(guard.provider, "socket_path", "?"),
+                )
+            except Exception as exc:
+                LOGGER.warning("failed to start CAT-Seg worker: %s", exc)
     follow_log_path = args.follow_log or (
         route_dir / "follow_output" / f"follow-{datetime.now().strftime('%Y%m%d_%H%M%S')}" / "output.jsonl"
     )
@@ -215,6 +228,7 @@ def main(argv: list[str] | None = None) -> int:
         voice_directions=args.voice,
         follow_log_path=follow_log_path,
         segmentation_guard=guard,
+        segmentation_observe_always=args.seg_online,
     )
     LOGGER.info("recording follow GPS to %s", follow_log_path)
     signal.signal(signal.SIGINT, lambda *_: setattr(runner, "running", False))

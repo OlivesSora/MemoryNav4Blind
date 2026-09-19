@@ -102,6 +102,29 @@ class SegmentationGuard:
             prompts=tuple(prompts),
         )
 
+    def observe(
+        self,
+        frame_id: str,
+        frame: Optional[np.ndarray] = None,
+    ) -> dict:
+        """Fetch a mask without a tracked command.
+
+        Used when the navigation pose is unavailable: the provider is started
+        and masks are produced/visualized, but no clock direction is evaluated
+        and no voice prompt is emitted.
+        """
+        mask = self.provider.get_mask(frame_id, frame)
+        if mask is None:
+            return {"status": "starting", "mask_ready": False}
+        if self.visualizer is not None and frame is not None:
+            save_mask = getattr(self.visualizer, "save_mask", None)
+            if save_mask is not None:
+                try:
+                    save_mask(frame, self.avoidance.mapper, mask)
+                except Exception as exc:  # Visualization must never break navigation.
+                    LOGGER.warning("segmentation visualization failed: %s", exc)
+        return {"status": "pose_unavailable", "mask_ready": True}
+
     def close(self) -> None:
         provider_close = getattr(self.provider, "close", None)
         if provider_close is not None:

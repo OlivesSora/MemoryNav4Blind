@@ -176,7 +176,7 @@ def validate_ready_route(route_dir: Path) -> None:
 
 
 class ReplayRunner:
-    def __init__(self, route_dir: Path, config: dict, gps=None, imu=None, speaker=None, camera=None, visual_matcher=None, vio=None, voice_directions: bool = False, follow_log_path: Path | None = None, segmentation_guard=None):
+    def __init__(self, route_dir: Path, config: dict, gps=None, imu=None, speaker=None, camera=None, visual_matcher=None, vio=None, voice_directions: bool = False, follow_log_path: Path | None = None, segmentation_guard=None, segmentation_observe_always: bool = False):
         self.route_dir = route_dir
         route = json.loads((route_dir / "reference_trajectory.json").read_text(encoding="utf-8"))
         self.frame = LocalFrame(route["origin"]["longitude"], route["origin"]["latitude"])
@@ -209,8 +209,26 @@ class ReplayRunner:
             max_rms_m=float(config["vio"]["maximum_alignment_rms_m"]),
         )
         self.segmentation_guard = segmentation_guard
+        self.segmentation_observe_always = segmentation_observe_always
         self._frame_counter = 0
         self.running = True
+
+    def _capture_frame(self):
+        """Capture one camera frame, returning ``None`` on any failure."""
+        if self.camera is None:
+            return None
+        try:
+            captured, _frame = self.camera.capture_frame()
+            return captured
+        except Exception as exc:  # Frame capture must never break navigation.
+            LOGGER.warning("segmentation frame capture failed: %s", exc)
+            return None
+
+    def _observe_segmentation(self, frame_id: str) -> dict | None:
+        observe = getattr(self.segmentation_guard, "observe", None)
+        if observe is None:
+            return None
+        return observe(frame_id, self._capture_frame())
 
     def step(self) -> dict | None:
         get_sample = getattr(self.gps, "get_sample", None)
@@ -226,11 +244,18 @@ class ReplayRunner:
             source = "rtk" if gps_state == "good" else "phone"
         heading = self.imu.get_heading()
         if coordinate is None or heading is None:
+            segmentation_status = None
+            if self.segmentation_guard is not None and self.segmentation_observe_always:
+                self._frame_counter += 1
+                segmentation_status = self._observe_segmentation(f"frame_{self._frame_counter}")
             guidance = self.guidance.update(None, "following", None, False, time.monotonic())
             self._play(guidance.prompts)
             if self.follow_logger is not None:
-                self.follow_logger.append(coordinate, heading)
-            return {"navigation_state": "following", "match_quality": "unavailable", "pause_progress": False, "prompts": [asdict(prompt) for prompt in guidance.prompts]}
+                self.follow_logger.append(coordinate, heading, segmentation=segmentation_status)
+            result = {"navigation_state": "following", "match_quality": "unavailable", "pause_progress": False, "prompts": [asdict(prompt) for prompt in guidance.prompts]}
+            if self.segmentation_guard is not None and self.segmentation_observe_always:
+                result["segmentation"] = segmentation_status
+            return result
         east, north = self.frame.to_local(float(coordinate[0]), float(coordinate[1]))
         vio_sample = None if self.vio is None else self.vio.latest()
         if self.vio_aligner is not None:
@@ -261,12 +286,7 @@ class ReplayRunner:
         if self.segmentation_guard is not None:
             self._frame_counter += 1
             frame_id = f"frame_{self._frame_counter}"
-            captured = None
-            if self.camera is not None:
-                try:
-                    captured, _frame = self.camera.capture_frame()
-                except Exception as exc:
-                    LOGGER.warning("segmentation frame capture failed: %s", exc)
+            captured = self._capture_frame()
             decision = self.segmentation_guard.apply(
                 command_clock, command_text, frame_id, captured, time.monotonic()
             )

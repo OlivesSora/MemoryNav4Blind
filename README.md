@@ -189,6 +189,12 @@ cd /home/wheeltec/projects/blind-nav && python utils/gps_server.py
 cd /home/wheeltec/projects/blind-nav
 conda activate blind
 
+# 录制：--camera 用硬件网关相机抓锚点候选；不传则仅 GPS+IMU
+bash memory_nav/scripts/start_recording.sh --route-id office-a --camera
+
+# Ctrl+C 结束后，对已有 raw 构建参考轨迹
+bash memory_nav/scripts/build_reference.sh --route-id office-a
+
 # A. 生成一条参考路线（VINS + GPS + IMU + 相机锚点）
 bash memory_nav/scripts/generate_reference_trajectory.sh \
   --route-id suishi-2 \
@@ -257,6 +263,8 @@ memory_nav/routes/suishi-2/
 
 只有 `manifest.state == READY` 且 `quality_report.ready == true` 才能被跟随。
 
+> 不使用 VINS 录制时 `raw/vio.jsonl` 为空（无 `/odometry`）属正常，位置源只有 `gps`。
+
 ### 6.3 事后补建 / 配置变更后重建
 
 参考轨迹由 `build_reference` 从 `raw/*` 生成。若上次中断或改了 `resample_spacing_m`/锚点参数，需**先删旧 `anchors.json`**（否则不会被刷新）再重建：
@@ -268,6 +276,25 @@ python3 -m memory_nav.trajectory.build_reference \
 ```
 
 `anchors/*.jpg` 与 `raw/events.jsonl` 会被继续引用，不需要删。
+
+### 6.4 不使用 VINS 录制（只用 GPS+IMU，可带相机锚点）
+
+不启动 VINS，`recorder` 不传 `--vio-topic` 时会**直读 `/dev/imu`**，只用 GPS + IMU（可选相机锚点）录制原始数据：
+
+```bash
+# 录制：--camera 用硬件网关相机抓锚点候选；不传则仅 GPS+IMU
+bash memory_nav/scripts/start_recording.sh --route-id office-a --camera
+
+# Ctrl+C 结束后，对已有 raw 构建参考轨迹
+bash memory_nav/scripts/build_reference.sh --route-id office-a
+```
+
+要点：
+
+- 前置：处于 `blind` 环境、GPS 服务在跑、硬件网关在跑（`--camera` 时）、`/dev/imu` 存在。
+- 此时 recorder **不要**与其他进程（如 VINS bridge）抢同一串口 `/dev/imu`。
+- 产物中 `raw/vio.jsonl` 为空，位置源只有 `gps`（`position_source=gps`），属正常。
+- 跟随这条路线用纯 GPS+IMU 入口，见 [9.1](#91-只用-gpsimu-跟踪不带视觉vins)（`start_gps_imu_follow.sh`）。
 
 ---
 
@@ -570,10 +597,10 @@ bash memory_nav/scripts/precompute_walkable_masks.sh \
   --frames /path/to/frames --masks /path/to/walkable_masks \
   --catseg-dir /home/wheeltec/projects/blind-nav-server/CAT-Seg \
   --config configs/vitb_384.yaml --weights model_base.pth \
-  --device cuda --walkable-names pavement,road,stairs [--overwrite]
+  --device cuda --walkable-names pavement,road,stairs,floor-marble,floor-stone,floor-tile,floor-wood [--overwrite]
 ```
 
-产物：`<stem>_walkable.png`（255=可通行）与 `manifest.json`（模型、权重、可通行类别、耗时）。可通行类别默认 `pavement,road,stairs`（来自 `CAT-Seg/datasets/coco.json`）。
+产物：`<stem>_walkable.png`（255=可通行）与 `manifest.json`（模型、权重、可通行类别、耗时）。可通行类别默认 `pavement,road,stairs,floor-marble,floor-stone,floor-tile,floor-wood`（来自 `CAT-Seg/datasets/coco.json`；室内硬地面用 `floor-*`，室外用 `pavement/road`）。
 
 ### 16.5 离线校验
 
@@ -634,7 +661,7 @@ python3 -m memory_nav.replay.replay_nav_seg \
   | `--seg-input-scale F` | `0.5` | 推理前下采样（省显存/提速） |
   | `--seg-min-size-test N` | `384` | 覆盖 `INPUT.MIN_SIZE_TEST` |
   | `--seg-max-hz N` | `1.0` | worker 最大推理频率 |
-  | `--seg-walkable-names` | `pavement,road,stairs` | 可通行类别 |
+  | `--seg-walkable-names` | `pavement,road,stairs,floor-marble,floor-stone,floor-tile,floor-wood` | 可通行类别 |
   | `--seg-socket PATH` | 自动 | worker socket 路径 |
   | `--seg-vis-dir DIR` | 配置 | 标注帧输出目录 |
   | `--seg-vis-interval S` | `1.0` | 标注帧保存间隔 |
@@ -682,14 +709,14 @@ python3 -m memory_nav.replay.replay_nav_seg \
 
 | 键 | 默认 | 含义 |
 |---|---|---|
-| `worker_python` | catseg python | worker 解释器 |
+| `worker_python` | `~/anaconda3/envs/catseg_seg/bin/python` | worker 解释器 |
 | `socket_path` | `null` | 指定 socket，默认自动 `/tmp/memory_nav_catseg_<pid>_<id>.sock` |
 | `device` | `cuda` | 推理设备 |
 | `input_scale` | `0.5` | 推理前下采样 |
 | `min_size_test` | `384` | `INPUT.MIN_SIZE_TEST` 覆盖 |
 | `max_hz` | `1.0` | 最大推理频率 |
-| `walkable_names` | `pavement,road,stairs` | 可通行类别 |
-| `vis_dir` | `memory_nav/analysis/output/seg_online` | 标注帧目录 |
+| `walkable_names` | `pavement,road,stairs,floor-marble,floor-stone,floor-tile,floor-wood` | 可通行类别 |
+| `vis_dir` | `memory_nav/analysis/test_0917/seg_online` | 标注帧目录 |
 | `vis_interval_s` | `1.0` | 标注帧间隔 |
 | `radius_ratio` | `null` | **在线专用**半径覆盖（`null`=沿用基础值） |
 

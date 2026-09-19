@@ -70,14 +70,14 @@ segmentation:
   # and queried over a Unix socket. Inference is throttled and the navigation
   # loop always reuses the latest mask.
   online:
-    worker_python: /home/wheeltec/anaconda3/envs/catseg/bin/python
+    worker_python: /home/wheeltec/anaconda3/envs/catseg_seg/bin/python
     socket_path: null
     device: cuda
     input_scale: 0.5
     min_size_test: 384
     max_hz: 1.0
-    walkable_names: pavement,road,stairs
-    vis_dir: memory_nav/analysis/output/seg_online
+    walkable_names: pavement,road,stairs,floor-marble,floor-stone,floor-tile,floor-wood
+    vis_dir: memory_nav/analysis/test_0917/seg_online
     vis_interval_s: 1.0
     # Optional online-only judgment radius override; null keeps radius_ratio.
     radius_ratio: null

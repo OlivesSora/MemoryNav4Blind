@@ -186,6 +186,67 @@ class ReplayRunnerTests(unittest.TestCase):
             self.assertFalse(result["visual_anchor"]["matched"])
             self.assertEqual(result["navigation_state"], "following")
 
+    def test_observe_segmentation_without_pose(self):
+        class Guard:
+            def __init__(self):
+                self.calls = 0
+                self.closed = False
+
+            def observe(self, frame_id, frame=None):
+                self.calls += 1
+                return {"status": "pose_unavailable", "mask_ready": True}
+
+            def close(self):
+                self.closed = True
+
+        class Camera:
+            def capture_frame(self):
+                return np.zeros((20, 20, 3), dtype=np.uint8), 0
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.make_route(root)
+            guard = Guard()
+            runner = ReplayRunner(
+                root,
+                load_config(),
+                gps=FakeGPS([(None, None)]),
+                imu=FakeIMU([None]),
+                camera=Camera(),
+                segmentation_guard=guard,
+                segmentation_observe_always=True,
+            )
+            result = runner.step()
+            runner.close()
+            self.assertEqual(result["navigation_state"], "following")
+            self.assertEqual(result["segmentation"], {"status": "pose_unavailable", "mask_ready": True})
+            self.assertEqual(guard.calls, 1)
+
+    def test_observe_segmentation_disabled_by_default_without_pose(self):
+        class Guard:
+            def __init__(self):
+                self.calls = 0
+
+            def observe(self, frame_id, frame=None):
+                self.calls += 1
+                return {"status": "pose_unavailable", "mask_ready": True}
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.make_route(root)
+            guard = Guard()
+            runner = ReplayRunner(
+                root,
+                load_config(),
+                gps=FakeGPS([(None, None)]),
+                imu=FakeIMU([None]),
+                segmentation_guard=guard,
+            )
+            result = runner.step()
+            runner.close()
+            self.assertNotIn("segmentation", result)
+            self.assertEqual(guard.calls, 0)
+
     def test_low_quality_route_is_rejected_before_hardware_start(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
