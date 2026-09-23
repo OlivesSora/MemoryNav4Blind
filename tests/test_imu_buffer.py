@@ -51,6 +51,18 @@ class IMUBufferTests(unittest.TestCase):
         self.assertEqual(imu.clear_samples(), 1)
         self.assertEqual(imu.drain_samples(), [])
 
+    def test_raw_imu_preserves_integer_time_and_all_samples(self):
+        imu = self.make_parser()
+        timestamps = [9_000_000_000_000_001, 9_000_000_000_000_002]
+        for t in timestamps:
+            imu._parse_imu(struct.pack("<12fq", *([.1,.2,.3,0.,0.,9.81]+[0.]*6), t))
+        samples = imu.drain_imu_samples()
+        self.assertEqual([r['device_timestamp_us'] for r in samples], timestamps)
+        self.assertEqual(len(samples[0]['gyro_rad_s']), 3)
+        self.assertEqual(imu.drain_imu_samples(), [])
+        imu._parse_imu(struct.pack("<12fq", *([0.]*12), 1))
+        self.assertEqual(imu.clear_imu_samples(), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

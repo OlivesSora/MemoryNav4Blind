@@ -10,6 +10,9 @@ Example::
 
     ~/anaconda3/envs/catseg/bin/python -m memory_nav.segmentation.catseg_worker \
         --socket /tmp/memory_nav_catseg.sock --device cuda --input-scale 0.5
+
+For Jetson deployments, ``--backend tensorrt`` uses the exported FP16 engines
+and avoids importing PyTorch or Detectron2 in the worker.
 """
 
 from __future__ import annotations
@@ -28,11 +31,19 @@ DEFAULT_CATSEG_DIR = os.getenv(
     "CATSEG_DIR", "/home/wheeltec/projects/blind-nav-server/CAT-Seg"
 )
 DEFAULT_WALKABLE_NAMES = "pavement,road,stairs"
+DEFAULT_TRT_EXPORT_DIR = Path(DEFAULT_CATSEG_DIR) / "export" / "catseg_stages"
+DEFAULT_TRT_CLIP_ENGINE = DEFAULT_TRT_EXPORT_DIR / "catseg_clip_stage_fp16.engine"
+DEFAULT_TRT_AGGREGATOR_ENGINE = (
+    DEFAULT_TRT_EXPORT_DIR / "catseg_aggregator_stage_fp16.engine"
+)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--socket", required=True, help="Unix domain socket path")
+    parser.add_argument(
+        "--backend", default="pytorch", choices=("pytorch", "tensorrt")
+    )
     parser.add_argument("--catseg-dir", type=Path, default=Path(DEFAULT_CATSEG_DIR))
     parser.add_argument("--config", default="configs/vitb_384.yaml")
     parser.add_argument("--weights", default="model_base.pth")
@@ -50,11 +61,24 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Override INPUT.MIN_SIZE_TEST to reduce GPU memory",
     )
+    parser.add_argument(
+        "--trt-clip-engine", type=Path, default=DEFAULT_TRT_CLIP_ENGINE
+    )
+    parser.add_argument(
+        "--trt-aggregator-engine",
+        type=Path,
+        default=DEFAULT_TRT_AGGREGATOR_ENGINE,
+    )
+    parser.add_argument(
+        "--trt-python-path", default="/usr/lib/python3.10/dist-packages"
+    )
+    parser.add_argument("--trt-warmup", type=int, default=1)
     return parser.parse_args(argv)
 
 
-def _serve_connection(connection, predictor, walkable_ids, default_scale: float) -> None:
-    from memory_nav.segmentation.precompute_masks import extract_mask
+def _serve_connection(
+    connection, infer_mask, default_scale: float, allow_input_scale: bool = True
+) -> None:
     from memory_nav.segmentation.protocol import recv_message, send_message
 
     while True:
@@ -71,7 +95,8 @@ def _serve_connection(connection, predictor, walkable_ids, default_scale: float)
         if image is None or not isinstance(image, np.ndarray):
             send_message(connection, {"type": "error", "error": "missing frame"})
             continue
-        scale = float(message.get("scale", default_scale))
+        requested_scale = float(message.get("scale", default_scale))
+        scale = requested_scale if allow_input_scale else 1.0
         started = time.perf_counter()
         try:
             processed = image
@@ -79,7 +104,7 @@ def _serve_connection(connection, predictor, walkable_ids, default_scale: float)
                 processed = cv2.resize(
                     image, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA
                 )
-            mask = extract_mask(processed, predictor, walkable_ids)
+            mask = infer_mask(processed)
             if mask.shape[:2] != image.shape[:2]:
                 mask = cv2.resize(
                     mask.astype(np.uint8),
@@ -109,16 +134,49 @@ def main(argv: list[str] | None = None) -> int:
     walkable_names = tuple(
         name.strip() for name in args.walkable_names.split(",") if name.strip()
     )
-    from memory_nav.segmentation.precompute_masks import build_predictor, load_walkable_ids
+    close_predictor = None
+    if args.backend == "tensorrt":
+        if args.device != "cuda":
+            raise ValueError("TensorRT backend requires --device cuda")
+        from memory_nav.segmentation.catseg_trt import CatSegTensorRTPredictor
 
-    walkable_ids = load_walkable_ids(args.catseg_dir, walkable_names)
-    os.chdir(args.catseg_dir)
-    extra_options = None
-    if args.min_size_test is not None:
-        extra_options = ["INPUT.MIN_SIZE_TEST", int(args.min_size_test)]
-    print(f"[catseg-worker] walkable_ids={dict(zip(walkable_names, walkable_ids))}", flush=True)
-    predictor = build_predictor(
-        args.catseg_dir, args.config, args.weights, args.device, extra_options
+        predictor = CatSegTensorRTPredictor(
+            clip_engine=args.trt_clip_engine,
+            aggregator_engine=args.trt_aggregator_engine,
+            labels_path=args.catseg_dir / "datasets" / "coco.json",
+            walkable_names=walkable_names,
+            tensorrt_python_path=args.trt_python_path,
+            warmup=args.trt_warmup,
+        )
+        walkable_ids = predictor.walkable_ids
+        infer_mask = predictor.predict
+        close_predictor = predictor.close
+        allow_input_scale = False
+    else:
+        from memory_nav.segmentation.precompute_masks import (
+            build_predictor,
+            extract_mask,
+            load_walkable_ids,
+        )
+
+        walkable_ids = load_walkable_ids(args.catseg_dir, walkable_names)
+        os.chdir(args.catseg_dir)
+        extra_options = None
+        if args.min_size_test is not None:
+            extra_options = ["INPUT.MIN_SIZE_TEST", int(args.min_size_test)]
+        predictor = build_predictor(
+            args.catseg_dir, args.config, args.weights, args.device, extra_options
+        )
+
+        def infer_mask(image):
+            return extract_mask(image, predictor, walkable_ids)
+
+        allow_input_scale = True
+
+    print(
+        f"[catseg-worker] backend={args.backend} "
+        f"walkable_ids={dict(zip(walkable_names, walkable_ids))}",
+        flush=True,
     )
     print(f"[catseg-worker] ready on {socket_path}", flush=True)
 
@@ -143,9 +201,16 @@ def main(argv: list[str] | None = None) -> int:
             except OSError:
                 break
             with connection:
-                _serve_connection(connection, predictor, walkable_ids, args.input_scale)
+                _serve_connection(
+                    connection,
+                    infer_mask,
+                    args.input_scale,
+                    allow_input_scale=allow_input_scale,
+                )
     finally:
         server.close()
+        if close_predictor is not None:
+            close_predictor()
         try:
             socket_path.unlink()
         except OSError:

@@ -72,7 +72,13 @@ segmentation:
   online:
     worker_python: /home/wheeltec/anaconda3/envs/catseg_seg/bin/python
     socket_path: null
+    # TensorRT FP16 avoids the PyTorch/NvMap allocator failure on Jetson r36.4.7.
+    backend: tensorrt
     device: cuda
+    trt_clip_engine: /home/wheeltec/projects/blind-nav-server/CAT-Seg/export/catseg_stages/catseg_clip_stage_fp16.engine
+    trt_aggregator_engine: /home/wheeltec/projects/blind-nav-server/CAT-Seg/export/catseg_stages/catseg_aggregator_stage_fp16.engine
+    trt_python_path: /usr/lib/python3.10/dist-packages
+    trt_warmup: 1
     input_scale: 0.5
     min_size_test: 384
     max_hz: 1.0

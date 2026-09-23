@@ -119,6 +119,14 @@ def _validate_segmentation(config: Mapping[str, Any]) -> None:
         return
     if not isinstance(online, Mapping):
         raise ConfigError("segmentation.online must be a mapping")
+    backend = online.get("backend", "pytorch")
+    if backend not in {"pytorch", "tensorrt"}:
+        raise ConfigError("segmentation.online.backend must be pytorch or tensorrt")
+    if backend == "tensorrt" and online.get("device", "cuda") != "cuda":
+        raise ConfigError("segmentation.online TensorRT backend requires device cuda")
+    trt_warmup = online.get("trt_warmup", 1)
+    if not isinstance(trt_warmup, int) or trt_warmup < 0:
+        raise ConfigError("segmentation.online.trt_warmup must be a non-negative integer")
     scale = online.get("input_scale", 0.5)
     if not isinstance(scale, (int, float)) or not 0.0 < scale <= 1.0:
         raise ConfigError("segmentation.online.input_scale must be in (0, 1]")

@@ -91,6 +91,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--seg-config", help="CAT-Seg config (default configs/vitb_384.yaml)")
     parser.add_argument("--seg-weights", help="CAT-Seg weights (default model_base.pth)")
     parser.add_argument("--seg-device", choices=("cuda", "cpu"), help="Worker inference device")
+    parser.add_argument(
+        "--seg-backend", choices=("pytorch", "tensorrt"), help="Online inference backend"
+    )
+    parser.add_argument("--seg-trt-clip-engine", help="TensorRT CLIP engine path")
+    parser.add_argument(
+        "--seg-trt-aggregator-engine", help="TensorRT aggregator engine path"
+    )
+    parser.add_argument(
+        "--seg-trt-python-path", help="Directory containing the tensorrt Python package"
+    )
+    parser.add_argument("--seg-trt-warmup", type=int, help="TensorRT startup warmup runs")
     parser.add_argument("--seg-walkable-names", help="Comma-separated walkable class names")
     parser.add_argument("--seg-input-scale", type=float, help="Downscale before inference (0, 1]")
     parser.add_argument("--seg-min-size-test", type=int, help="Override INPUT.MIN_SIZE_TEST")
@@ -103,6 +114,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def _online_provider(args: argparse.Namespace, mapping: dict) -> CatSegWorkerProvider:
     online = dict(mapping.get("online", {}))
+    backend = args.seg_backend or online.get("backend") or "pytorch"
+    if args.seg_device == "cpu" and args.seg_backend is None:
+        # An explicit CPU request must remain usable even when the deployment
+        # configuration defaults to the CUDA-only TensorRT backend.
+        backend = "pytorch"
     walkable = args.seg_walkable_names or online.get("walkable_names") or ",".join(DEFAULT_WALKABLE_NAMES)
     if isinstance(walkable, (list, tuple)):
         walkable = ",".join(str(name) for name in walkable)
@@ -113,11 +129,28 @@ def _online_provider(args: argparse.Namespace, mapping: dict) -> CatSegWorkerPro
         config=args.seg_config or mapping.get("catseg_config") or "configs/vitb_384.yaml",
         weights=args.seg_weights or mapping.get("catseg_weights") or "model_base.pth",
         device=args.seg_device or online.get("device") or mapping.get("catseg_device") or "cuda",
+        backend=backend,
+        trt_clip_engine=args.seg_trt_clip_engine or online.get("trt_clip_engine"),
+        trt_aggregator_engine=(
+            args.seg_trt_aggregator_engine or online.get("trt_aggregator_engine")
+        ),
+        trt_python_path=(
+            args.seg_trt_python_path
+            or online.get("trt_python_path")
+            or "/usr/lib/python3.10/dist-packages"
+        ),
+        trt_warmup=(
+            args.seg_trt_warmup
+            if args.seg_trt_warmup is not None
+            else int(online.get("trt_warmup", 1))
+        ),
         walkable_names=[name.strip() for name in str(walkable).split(",") if name.strip()],
         input_scale=args.seg_input_scale if args.seg_input_scale is not None else float(online.get("input_scale", 0.5)),
         min_size_test=args.seg_min_size_test if args.seg_min_size_test is not None else online.get("min_size_test"),
         max_hz=args.seg_max_hz if args.seg_max_hz is not None else float(online.get("max_hz", 1.0)),
-        min_free_mb=int(online.get("min_free_mb", 3000)),
+        min_free_mb=int(
+            online.get("min_free_mb", 512 if backend == "tensorrt" else 3000)
+        ),
     )
 
 
@@ -254,4 +287,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -8,6 +8,7 @@ import numpy as np
 
 from memory_nav.segmentation.avoidance import SegmentationAvoidance, SegmentationConfig
 from memory_nav.segmentation.catseg_worker import parse_args as worker_parse_args
+from memory_nav.segmentation.catseg_trt import preprocess_bgr, probabilities_to_mask
 from memory_nav.segmentation.guard import SegmentationGuard
 from memory_nav.segmentation.online_provider import (
     CatSegWorkerProvider,
@@ -64,8 +65,37 @@ class WorkerArgTests(unittest.TestCase):
         args = worker_parse_args(["--socket", "/tmp/x.sock"])
         self.assertEqual(args.socket, "/tmp/x.sock")
         self.assertEqual(args.device, "cuda")
+        self.assertEqual(args.backend, "pytorch")
         self.assertEqual(args.input_scale, 1.0)
         self.assertIsNone(args.min_size_test)
+
+    def test_parse_args_tensorrt(self):
+        args = worker_parse_args([
+            "--socket", "/tmp/x.sock", "--backend", "tensorrt", "--trt-warmup", "2"
+        ])
+        self.assertEqual(args.backend, "tensorrt")
+        self.assertEqual(args.trt_warmup, 2)
+
+
+class TensorRTHelperTests(unittest.TestCase):
+    def test_preprocess_bgr_has_fixed_rgb_nchw_shape(self):
+        bgr = np.zeros((20, 10, 3), dtype=np.uint8)
+        bgr[:, :, 0] = 10
+        bgr[:, :, 1] = 20
+        bgr[:, :, 2] = 30
+        tensor = preprocess_bgr(bgr)
+        self.assertEqual(tensor.shape, (1, 3, 384, 384))
+        self.assertEqual(tensor.dtype, np.float32)
+        self.assertEqual(tuple(tensor[0, :, 0, 0]), (30.0, 20.0, 10.0))
+
+    def test_probabilities_to_mask_resizes_walkable_argmax(self):
+        scores = np.zeros((1, 3, 2, 2), dtype=np.float32)
+        scores[:, 2, :, :1] = 1.0
+        scores[:, 1, :, 1:] = 1.0
+        mask = probabilities_to_mask(scores, [2], (4, 4))
+        self.assertEqual(mask.shape, (4, 4))
+        self.assertTrue(mask[:, :2].all())
+        self.assertFalse(mask[:, 2:].any())
 
 
 class ProviderTests(unittest.TestCase):
@@ -175,7 +205,18 @@ class BuildGuardTests(unittest.TestCase):
         guard = build_guard(args, load_config())
         self.assertIsNotNone(guard)
         self.assertIsInstance(guard.provider, CatSegWorkerProvider)
+        self.assertEqual(guard.provider.backend, "pytorch")
         self.assertIsNotNone(guard.visualizer)
+        guard.close()
+
+    def test_online_mode_uses_configured_tensorrt_backend(self):
+        from memory_nav.config import load_config
+        from memory_nav.replay.replay_nav_seg import build_guard, parse_args
+
+        args = parse_args(["--route-id", "route", "--seg-online"])
+        guard = build_guard(args, load_config())
+        self.assertIsNotNone(guard)
+        self.assertEqual(guard.provider.backend, "tensorrt")
         guard.close()
 
     def test_offline_mode_selects_cached_provider(self):

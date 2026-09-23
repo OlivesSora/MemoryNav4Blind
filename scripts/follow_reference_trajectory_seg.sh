@@ -22,9 +22,12 @@ is used (hardware-gateway camera); pass --vio-topic to use VINS, in which case
 VINS and the hardware gateway must already be running.
 
 MemoryNav options:   --route-id ID --config FILE --interval S --voice --visual-anchors
-Segmentation options: --seg-device cuda|cpu --seg-vis-dir DIR --seg-max-hz N
+Segmentation options: --seg-backend pytorch|tensorrt --seg-device cuda|cpu
+                      --seg-vis-dir DIR --seg-max-hz N
                       --seg-input-scale F --seg-min-size-test N --seg-radius-ratio F
                       --seg-worker-python PATH --seg-walkable-names NAMES --seg-show
+TensorRT options:     --seg-trt-clip-engine PATH --seg-trt-aggregator-engine PATH
+                      --seg-trt-python-path DIR --seg-trt-warmup N
 VINS options:         --vio-topic TOPIC --ros-image-topic TOPIC --no-vio
 
 Logging options:      --log-dir DIR
@@ -43,9 +46,10 @@ while [[ $# -gt 0 ]]; do
     --help|-h) usage; exit 0 ;;
     --log-dir) LOG_DIR="$2"; shift 2 ;;
     --route-id|--config|--interval|--vio-topic|--ros-image-topic|--follow-log|\
-    --seg-device|--seg-vis-dir|--seg-max-hz|--seg-input-scale|--seg-min-size-test|\
+    --seg-device|--seg-backend|--seg-vis-dir|--seg-max-hz|--seg-input-scale|--seg-min-size-test|\
     --seg-worker-python|--seg-catseg-dir|--seg-config|--seg-weights|\
-    --seg-walkable-names|--seg-socket|--seg-cooldown|--seg-vis-interval|--seg-radius-ratio)
+    --seg-walkable-names|--seg-socket|--seg-cooldown|--seg-vis-interval|--seg-radius-ratio|\
+    --seg-trt-clip-engine|--seg-trt-aggregator-engine|--seg-trt-python-path|--seg-trt-warmup)
       REPLAY_ARGS+=("$1" "$2"); shift 2 ;;
     --voice|--visual-anchors|--seg-online|--seg-show|--no-vio)
       REPLAY_ARGS+=("$1"); shift ;;

@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import cv2
 import numpy as np
 
 from memory_nav.calibration.collect_calibration import CalibrationCollector
@@ -12,8 +13,13 @@ from memory_nav.recording.session_writer import read_jsonl
 
 
 class FakeCamera:
+    def __init__(self):
+        self.value = 0
+
     def capture_frame(self, width=None, height=None):
-        return np.zeros((height or 24, width or 32, 3), dtype=np.uint8), 7
+        return np.full(
+            (height or 24, width or 32, 3), self.value, dtype=np.uint8
+        ), 7
 
 
 class FakeIMU:
@@ -41,6 +47,29 @@ class CalibrationTests(unittest.TestCase):
             csv_lines = (Path(directory) / "dataset" / "imu0.csv").read_text().splitlines()
             self.assertEqual(csv_lines[0], "timestamp,omega_x,omega_y,omega_z,alpha_x,alpha_y,alpha_z")
             self.assertEqual(len(csv_lines), 3)
+
+    def test_live_preview_is_created_and_atomically_replaced(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            camera = FakeCamera()
+            preview = root / "calibration_data" / "tmp.jpg"
+            collector = CalibrationCollector(
+                root / "session",
+                camera,
+                FakeIMU(),
+                live_preview_path=preview,
+            )
+
+            self.assertTrue(collector.capture_frame(13, 64, 48))
+            first = cv2.imread(str(preview), cv2.IMREAD_COLOR)
+            self.assertEqual(first.shape, (48, 64, 3))
+            self.assertLess(float(first.mean()), 1.0)
+
+            camera.value = 255
+            self.assertTrue(collector.capture_frame(14, 64, 48))
+            second = cv2.imread(str(preview), cv2.IMREAD_COLOR)
+            self.assertGreater(float(second.mean()), 254.0)
+            self.assertFalse((preview.parent / ".tmp.jpg.writing.jpg").exists())
 
     def test_validate_transform(self):
         valid = {"schema_version": 1, "camera": {}, "imu": {}, "T_camera_imu": np.eye(4).tolist(), "time_offset_s": 0.01, "quality": {"passed": True}}

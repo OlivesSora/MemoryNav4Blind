@@ -29,6 +29,7 @@ LOGGER = logging.getLogger(__name__)
 DEFAULT_WORKER_PYTHON = os.path.expanduser("~/anaconda3/envs/catseg/bin/python")
 DEFAULT_CATSEG_DIR = "/home/wheeltec/projects/blind-nav-server/CAT-Seg"
 DEFAULT_WALKABLE_NAMES = ("pavement", "road", "stairs")
+DEFAULT_TRT_PYTHON_PATH = "/usr/lib/python3.10/dist-packages"
 
 
 class NullMaskProvider:
@@ -50,6 +51,11 @@ class CatSegWorkerProvider:
         config: str = "configs/vitb_384.yaml",
         weights: str = "model_base.pth",
         device: str = "cuda",
+        backend: str = "pytorch",
+        trt_clip_engine: str | Path | None = None,
+        trt_aggregator_engine: str | Path | None = None,
+        trt_python_path: str = DEFAULT_TRT_PYTHON_PATH,
+        trt_warmup: int = 1,
         walkable_names: Sequence[str] = DEFAULT_WALKABLE_NAMES,
         input_scale: float = 0.5,
         min_size_test: int | None = None,
@@ -61,11 +67,28 @@ class CatSegWorkerProvider:
             raise ValueError("input_scale must be in (0, 1]")
         if max_hz <= 0:
             raise ValueError("max_hz must be positive")
+        if backend not in {"pytorch", "tensorrt"}:
+            raise ValueError("backend must be 'pytorch' or 'tensorrt'")
+        if backend == "tensorrt" and device != "cuda":
+            raise ValueError("TensorRT backend requires device='cuda'")
+        if trt_warmup < 0:
+            raise ValueError("trt_warmup must be non-negative")
         self.worker_python = str(Path(worker_python).expanduser())
         self.catseg_dir = Path(catseg_dir).expanduser()
         self.config = config
         self.weights = weights
         self.device = device
+        self.backend = backend
+        export_dir = self.catseg_dir / "export" / "catseg_stages"
+        self.trt_clip_engine = Path(
+            trt_clip_engine or export_dir / "catseg_clip_stage_fp16.engine"
+        ).expanduser()
+        self.trt_aggregator_engine = Path(
+            trt_aggregator_engine
+            or export_dir / "catseg_aggregator_stage_fp16.engine"
+        ).expanduser()
+        self.trt_python_path = trt_python_path
+        self.trt_warmup = int(trt_warmup)
         self.walkable_names = tuple(walkable_names)
         self.input_scale = float(input_scale)
         self.min_size_test = min_size_test
@@ -125,7 +148,9 @@ class CatSegWorkerProvider:
         available_mb = self._meminfo_mb(info.get("MemAvailable"))
         cma_free_mb = self._meminfo_mb(info.get("CmaFree"))
         LOGGER.info(
-            "CAT-Seg preflight: MemAvailable=%sMB CmaFree=%sMB (need >= %sMB for CUDA model load)",
+            "CAT-Seg %s preflight: MemAvailable=%sMB CmaFree=%sMB "
+            "(need >= %sMB for CUDA model load)",
+            self.backend,
             "?" if available_mb is None else available_mb,
             "?" if cma_free_mb is None else cma_free_mb,
             self._min_free_mb,
@@ -161,6 +186,8 @@ class CatSegWorkerProvider:
             "memory_nav.segmentation.catseg_worker",
             "--socket",
             str(self.socket_path),
+            "--backend",
+            self.backend,
             "--catseg-dir",
             str(self.catseg_dir),
             "--config",
@@ -174,6 +201,19 @@ class CatSegWorkerProvider:
             "--input-scale",
             str(self.input_scale),
         ]
+        if self.backend == "tensorrt":
+            command.extend(
+                [
+                    "--trt-clip-engine",
+                    str(self.trt_clip_engine),
+                    "--trt-aggregator-engine",
+                    str(self.trt_aggregator_engine),
+                    "--trt-python-path",
+                    self.trt_python_path,
+                    "--trt-warmup",
+                    str(self.trt_warmup),
+                ]
+            )
         if self.min_size_test is not None:
             command.extend(["--min-size-test", str(int(self.min_size_test))])
         LOGGER.info("starting CAT-Seg worker: %s", " ".join(command))
@@ -293,6 +333,7 @@ class CatSegWorkerProvider:
 
     def diagnostics(self) -> dict:
         return {
+            "backend": self.backend,
             "connected": self._connected,
             "frames_sent": self._frames_sent,
             "errors": self._errors,
