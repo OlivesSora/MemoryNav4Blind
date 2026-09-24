@@ -47,6 +47,25 @@ class SegmentationGuard:
         self.no_walkable_text = no_walkable_text
         self.rotate_text = rotate_text
 
+    def _get_mask_and_frame(
+        self, frame_id: str, frame: Optional[np.ndarray],
+        captured_at_s: Optional[float] = None,
+    ) -> tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+        """Return a mask with the exact source frame used to infer it."""
+        get_observation = getattr(self.provider, "get_observation", None)
+        if get_observation is not None:
+            observation = (
+                get_observation(frame_id, frame, captured_at_s=captured_at_s)
+                if captured_at_s is not None else get_observation(frame_id, frame)
+            )
+            if observation is None:
+                return None, None
+            return (
+                np.asarray(observation.mask).astype(bool),
+                observation.frame,
+            )
+        return self.provider.get_mask(frame_id, frame), frame
+
     def _text_for(self, result: SegmentationResult, command_text: str) -> str:
         if result.consistent or result.out_of_scope:
             return command_text
@@ -61,14 +80,15 @@ class SegmentationGuard:
         frame_id: str,
         frame: Optional[np.ndarray] = None,
         now_s: Optional[float] = None,
+        captured_at_s: Optional[float] = None,
     ) -> Optional[SegmentationDecision]:
-        mask = self.provider.get_mask(frame_id, frame)
+        mask, source_frame = self._get_mask_and_frame(frame_id, frame, captured_at_s)
         if mask is None:
             return None
         result = self.avoidance.evaluate(command_clock, mask)
-        if self.visualizer is not None and frame is not None:
+        if self.visualizer is not None and source_frame is not None:
             try:
-                self.visualizer(frame, result, self.avoidance.mapper, mask)
+                self.visualizer(source_frame, result, self.avoidance.mapper, mask)
             except Exception as exc:  # Visualization must never break navigation.
                 LOGGER.warning("segmentation visualization failed: %s", exc)
         text = self._text_for(result, command_text)
@@ -106,6 +126,7 @@ class SegmentationGuard:
         self,
         frame_id: str,
         frame: Optional[np.ndarray] = None,
+        captured_at_s: Optional[float] = None,
     ) -> dict:
         """Fetch a mask without a tracked command.
 
@@ -113,14 +134,14 @@ class SegmentationGuard:
         and masks are produced/visualized, but no clock direction is evaluated
         and no voice prompt is emitted.
         """
-        mask = self.provider.get_mask(frame_id, frame)
+        mask, source_frame = self._get_mask_and_frame(frame_id, frame, captured_at_s)
         if mask is None:
             return {"status": "starting", "mask_ready": False}
-        if self.visualizer is not None and frame is not None:
+        if self.visualizer is not None and source_frame is not None:
             save_mask = getattr(self.visualizer, "save_mask", None)
             if save_mask is not None:
                 try:
-                    save_mask(frame, self.avoidance.mapper, mask)
+                    save_mask(source_frame, self.avoidance.mapper, mask)
                 except Exception as exc:  # Visualization must never break navigation.
                     LOGGER.warning("segmentation visualization failed: %s", exc)
         return {"status": "pose_unavailable", "mask_ready": True}

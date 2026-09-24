@@ -1,10 +1,10 @@
 """Online CAT-Seg mask provider backed by a persistent worker subprocess.
 
 The provider owns a ``catseg``-environment worker process (detectron2) and
-talks to it over a Unix domain socket.  Inference is slow relative to the
-navigation loop, so the provider runs it on a background thread with a
-single-slot frame buffer: the newest frame replaces any queued frame and
-``get_mask`` always returns the most recent mask without blocking.
+talks to it over a Unix domain socket. Inference runs on a background thread
+with a single-slot frame buffer: the newest frame replaces any queued frame.
+Every result retains its source frame id, capture timestamp and pixels, and
+results older than the configured age limit are rejected.
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ import socket
 import subprocess
 import threading
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Sequence
 
@@ -30,6 +31,30 @@ DEFAULT_WORKER_PYTHON = os.path.expanduser("~/anaconda3/envs/catseg/bin/python")
 DEFAULT_CATSEG_DIR = "/home/wheeltec/projects/blind-nav-server/CAT-Seg"
 DEFAULT_WALKABLE_NAMES = ("pavement", "road", "stairs")
 DEFAULT_TRT_PYTHON_PATH = "/usr/lib/python3.10/dist-packages"
+
+
+@dataclass(frozen=True)
+class MaskObservation:
+    """A mask paired with the exact camera frame that produced it."""
+
+    frame_id: str
+    captured_at_s: float
+    completed_at_s: float
+    frame: np.ndarray
+    mask: np.ndarray
+    inference_s: float
+
+    def age_s(self, now_s: float | None = None) -> float:
+        now = time.monotonic() if now_s is None else now_s
+        return max(0.0, now - self.captured_at_s)
+
+
+@dataclass(frozen=True)
+class _PendingFrame:
+    frame_id: str
+    captured_at_s: float
+    frame_bgr: np.ndarray
+    source_frame: np.ndarray
 
 
 class NullMaskProvider:
@@ -59,7 +84,8 @@ class CatSegWorkerProvider:
         walkable_names: Sequence[str] = DEFAULT_WALKABLE_NAMES,
         input_scale: float = 0.5,
         min_size_test: int | None = None,
-        max_hz: float = 1.0,
+        max_hz: float = 4.0,
+        max_mask_age_s: float = 0.4,
         connect_timeout_s: float = 60.0,
         min_free_mb: int = 3000,
     ):
@@ -67,6 +93,8 @@ class CatSegWorkerProvider:
             raise ValueError("input_scale must be in (0, 1]")
         if max_hz <= 0:
             raise ValueError("max_hz must be positive")
+        if max_mask_age_s <= 0:
+            raise ValueError("max_mask_age_s must be positive")
         if backend not in {"pytorch", "tensorrt"}:
             raise ValueError("backend must be 'pytorch' or 'tensorrt'")
         if backend == "tensorrt" and device != "cuda":
@@ -98,18 +126,19 @@ class CatSegWorkerProvider:
             else Path(f"/tmp/memory_nav_catseg_{os.getpid()}_{id(self):x}.sock")
         )
         self._min_interval_s = 1.0 / max_hz
+        self.max_mask_age_s = float(max_mask_age_s)
         self._connect_timeout_s = connect_timeout_s
         self._min_free_mb = int(min_free_mb)
         self._lock = threading.Lock()
-        self._pending_frame: Optional[np.ndarray] = None
+        self._pending_frame: Optional[_PendingFrame] = None
         self._pending_event = threading.Event()
-        self._latest_mask: Optional[np.ndarray] = None
+        self._latest_observation: Optional[MaskObservation] = None
         self._stop = threading.Event()
         self._process: Optional[subprocess.Popen] = None
         self._thread: Optional[threading.Thread] = None
         self._started = False
         self._connected = False
-        self._last_inference_s: Optional[float] = None
+        self._last_inference_started_s: Optional[float] = None
         self._frames_sent = 0
         self._errors = 0
         self._last_error: Optional[str] = None
@@ -257,22 +286,48 @@ class CatSegWorkerProvider:
             while not self._stop.is_set():
                 if not self._pending_event.wait(timeout=0.2):
                     continue
+                # Wait first, then take the single-slot buffer. Frames that
+                # arrive while throttled replace older ones, so inference
+                # always starts from the newest available camera frame.
+                self._throttle()
                 with self._lock:
-                    frame = self._pending_frame
+                    pending = self._pending_frame
                     self._pending_frame = None
                     self._pending_event.clear()
-                if frame is None:
+                if pending is None:
                     continue
-                self._throttle()
-                send_message(connection, {"type": "frame", "image": frame})
+                inference_started_s = time.monotonic()
+                send_message(
+                    connection,
+                    {
+                        "type": "frame",
+                        "frame_id": pending.frame_id,
+                        "captured_at_s": pending.captured_at_s,
+                        "image": pending.frame_bgr,
+                    },
+                )
                 reply = recv_message(connection)
                 if reply is None:
                     raise ConnectionError("CAT-Seg worker closed the connection")
                 if reply.get("type") != "mask":
                     raise RuntimeError(f"CAT-Seg worker error: {reply.get('error')}")
+                if str(reply.get("frame_id")) != pending.frame_id:
+                    raise RuntimeError(
+                        "CAT-Seg worker returned a mismatched frame: "
+                        f"expected {pending.frame_id}, received {reply.get('frame_id')}"
+                    )
+                completed_at_s = time.monotonic()
+                observation = MaskObservation(
+                    frame_id=pending.frame_id,
+                    captured_at_s=float(reply.get("captured_at_s", pending.captured_at_s)),
+                    completed_at_s=completed_at_s,
+                    frame=pending.source_frame,
+                    mask=np.asarray(reply["mask"]),
+                    inference_s=float(reply.get("elapsed_s", 0.0)),
+                )
                 with self._lock:
-                    self._latest_mask = np.asarray(reply["mask"])
-                self._last_inference_s = time.monotonic()
+                    self._latest_observation = observation
+                self._last_inference_started_s = inference_started_s
                 self._frames_sent += 1
         except Exception as exc:  # Degrade to no-mask without killing navigation.
             if not self._stop.is_set():
@@ -288,9 +343,11 @@ class CatSegWorkerProvider:
                 connection.close()
 
     def _throttle(self) -> None:
-        if self._last_inference_s is None:
+        if self._last_inference_started_s is None:
             return
-        wait = self._min_interval_s - (time.monotonic() - self._last_inference_s)
+        wait = self._min_interval_s - (
+            time.monotonic() - self._last_inference_started_s
+        )
         if wait > 0:
             self._stop.wait(timeout=wait)
 
@@ -309,35 +366,80 @@ class CatSegWorkerProvider:
     def get_mask(
         self, frame_id, frame: Optional[np.ndarray] = None
     ) -> Optional[np.ndarray]:
+        observation = self.get_observation(frame_id, frame)
+        return None if observation is None else observation.mask.astype(bool)
+
+    def get_observation(
+        self, frame_id, frame: Optional[np.ndarray] = None,
+        captured_at_s: float | None = None,
+    ) -> Optional[MaskObservation]:
+        """Queue ``frame`` and return only a recent, correctly paired result."""
         if not self._started:
             self.start()
         if frame is not None and self._thread is not None and self._thread.is_alive():
+            now_s = time.monotonic()
+            source_time_s = now_s if captured_at_s is None else min(now_s, captured_at_s)
+            source_frame = np.asarray(frame).copy()
             with self._lock:
-                self._pending_frame = self._to_bgr(frame)
+                self._pending_frame = _PendingFrame(
+                    frame_id=str(frame_id),
+                    captured_at_s=source_time_s,
+                    frame_bgr=self._to_bgr(source_frame),
+                    source_frame=source_frame,
+                )
                 self._pending_event.set()
-        with self._lock:
-            mask = self._latest_mask
-        if mask is None:
+        observation = self.latest_observation()
+        if observation is None or observation.age_s() > self.max_mask_age_s:
             return None
-        result = np.asarray(mask).astype(bool)
-        if frame is not None and result.shape[:2] != np.asarray(frame).shape[:2]:
+
+        return observation
+
+    def latest_observation(self) -> Optional[MaskObservation]:
+        """Return the latest source-paired result, even when too old for navigation."""
+        with self._lock:
+            observation = self._latest_observation
+        if observation is None:
+            return None
+        raw_mask = np.asarray(observation.mask)
+        if raw_mask.dtype == bool and raw_mask.shape[:2] == observation.frame.shape[:2]:
+            return observation
+        result = raw_mask.astype(bool)
+        if result.shape[:2] != observation.frame.shape[:2]:
             result = (
                 cv2.resize(
                     result.astype(np.uint8),
-                    (np.asarray(frame).shape[1], np.asarray(frame).shape[0]),
+                    (observation.frame.shape[1], observation.frame.shape[0]),
                     interpolation=cv2.INTER_NEAREST,
                 )
                 > 0
             )
-        return result
+        return MaskObservation(
+            frame_id=observation.frame_id,
+            captured_at_s=observation.captured_at_s,
+            completed_at_s=observation.completed_at_s,
+            frame=observation.frame,
+            mask=result,
+            inference_s=observation.inference_s,
+        )
 
     def diagnostics(self) -> dict:
+        with self._lock:
+            observation = self._latest_observation
         return {
             "backend": self.backend,
+            "max_hz": round(1.0 / self._min_interval_s, 3),
+            "max_mask_age_s": self.max_mask_age_s,
             "connected": self._connected,
             "frames_sent": self._frames_sent,
             "errors": self._errors,
-            "has_mask": self._latest_mask is not None,
+            "has_mask": observation is not None,
+            "latest_frame_id": None if observation is None else observation.frame_id,
+            "mask_age_ms": None if observation is None else round(observation.age_s() * 1000.0, 1),
+            "capture_to_result_ms": None if observation is None else round(
+                (observation.completed_at_s - observation.captured_at_s) * 1000.0,
+                1,
+            ),
+            "inference_ms": None if observation is None else round(observation.inference_s * 1000.0, 1),
             "worker_alive": self._process is not None and self._process.poll() is None,
             "worker_returncode": None if self._process is None else self._process.poll(),
             "last_error": self._last_error,

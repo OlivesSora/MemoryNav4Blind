@@ -65,6 +65,33 @@ class InteractionTests(unittest.TestCase):
         self.assertCountEqual(played, ["ok", "bad"])
         self.assertEqual(len(worker.errors), 1)
 
+    def test_voice_worker_discards_queued_stale_direction(self):
+        import threading
+        import time
+
+        started = threading.Event()
+        release = threading.Event()
+        played = []
+
+        def speaker(text):
+            played.append(text)
+            if text == "first":
+                started.set()
+                release.wait(timeout=2)
+
+        worker = VoicePlaybackWorker(speaker, max_dynamic_age_s=0.02)
+        try:
+            self.assertTrue(worker.submit(Prompt("anchor:first", "first", 1)))
+            self.assertTrue(started.wait(timeout=1))
+            self.assertTrue(worker.submit(Prompt("direction:3", "stale", 2)))
+            time.sleep(0.05)
+            release.set()
+            worker.join()
+            self.assertEqual(played, ["first"])
+        finally:
+            release.set()
+            worker.close()
+
     def test_xfeat_loads_local_weights_without_hub_download(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

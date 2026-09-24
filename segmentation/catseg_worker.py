@@ -96,6 +96,8 @@ def _serve_connection(
             send_message(connection, {"type": "error", "error": "missing frame"})
             continue
         requested_scale = float(message.get("scale", default_scale))
+        frame_id = str(message.get("frame_id", ""))
+        captured_at_s = message.get("captured_at_s")
         scale = requested_scale if allow_input_scale else 1.0
         started = time.perf_counter()
         try:
@@ -115,6 +117,8 @@ def _serve_connection(
                 connection,
                 {
                     "type": "mask",
+                    "frame_id": frame_id,
+                    "captured_at_s": captured_at_s,
                     "mask": mask.astype(np.uint8) * 255,
                     "elapsed_s": time.perf_counter() - started,
                     "scale": scale,

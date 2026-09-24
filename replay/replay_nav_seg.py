@@ -9,8 +9,8 @@ nearest walkable clock direction.
 Two mask sources are supported:
 
 * ``--seg-online``: a persistent CAT-Seg worker (``catseg`` conda env) is
-  spawned automatically and queried over a Unix socket.  The newest mask is
-  reused by the navigation loop, so inference never blocks it.
+  spawned automatically and queried over a Unix socket. Only recent masks are
+  used, and visualization keeps each mask paired with its source frame.
 * ``--walkable-mask-dir``: precomputed mask PNGs, optionally replayed in
   lock-step with ``--simulate-frames``.
 
@@ -106,6 +106,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--seg-input-scale", type=float, help="Downscale before inference (0, 1]")
     parser.add_argument("--seg-min-size-test", type=int, help="Override INPUT.MIN_SIZE_TEST")
     parser.add_argument("--seg-max-hz", type=float, help="Maximum worker inference rate")
+    parser.add_argument("--seg-max-mask-age", type=float, help="Maximum usable mask age in seconds")
     parser.add_argument("--seg-vis-dir", type=Path, help="Directory for annotated frames")
     parser.add_argument("--seg-vis-interval", type=float, default=1.0, help="Seconds between saved frames")
     parser.add_argument("--seg-show", action="store_true", help="Also show a live window if a display exists")
@@ -147,7 +148,12 @@ def _online_provider(args: argparse.Namespace, mapping: dict) -> CatSegWorkerPro
         walkable_names=[name.strip() for name in str(walkable).split(",") if name.strip()],
         input_scale=args.seg_input_scale if args.seg_input_scale is not None else float(online.get("input_scale", 0.5)),
         min_size_test=args.seg_min_size_test if args.seg_min_size_test is not None else online.get("min_size_test"),
-        max_hz=args.seg_max_hz if args.seg_max_hz is not None else float(online.get("max_hz", 1.0)),
+        max_hz=args.seg_max_hz if args.seg_max_hz is not None else float(online.get("max_hz", 4.0)),
+        max_mask_age_s=(
+            args.seg_max_mask_age
+            if args.seg_max_mask_age is not None
+            else float(online.get("max_mask_age_s", 0.4))
+        ),
         min_free_mb=int(
             online.get("min_free_mb", 512 if backend == "tensorrt" else 3000)
         ),
@@ -270,6 +276,7 @@ def main(argv: list[str] | None = None) -> int:
     next_diagnostics_s = time.monotonic() + 5.0
     try:
         while runner.running:
+            step_started_s = time.monotonic()
             print(json.dumps(runner.step(), ensure_ascii=False), flush=True)
             now = time.monotonic()
             if diagnostics_provider is not None and now >= next_diagnostics_s:
@@ -277,7 +284,9 @@ def main(argv: list[str] | None = None) -> int:
                 if get_diagnostics is not None:
                     LOGGER.info("segmentation provider: %s", get_diagnostics())
                 next_diagnostics_s = now + 5.0
-            time.sleep(args.interval)
+            remaining_s = args.interval - (time.monotonic() - step_started_s)
+            if remaining_s > 0:
+                time.sleep(remaining_s)
     finally:
         runner.close()
         if guard is not None:

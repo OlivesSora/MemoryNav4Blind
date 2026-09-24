@@ -28,6 +28,7 @@ from memory_nav.replay.anchor_matcher import XFeatAnchorMatcher
 from memory_nav.config import PROJECT_ROOT
 from memory_nav.vio import OnlineVioAligner, VioSubscriber
 from memory_nav.interaction.voice_prompt import Prompt
+from memory_nav.segmentation.guard import SegmentationGuard
 from memory_nav.trajectory.coordinate import heading_from_delta, wrap_to_180
 
 
@@ -93,11 +94,47 @@ class HardwareGatewayIMU:
 class HardwareGatewayCamera:
     """Camera adapter matching the local Camera.capture_frame interface."""
 
-    def __init__(self, hardware_agent) -> None:
+    def __init__(self, hardware_agent, max_source_age_s: float = 0.8) -> None:
         self._hardware_agent = hardware_agent
+        self.max_source_age_s = max_source_age_s
+        self._last_frame_count = None
+        self._last_stale_warning_s = 0.0
+        self._last_latency_log_s = 0.0
+        self.last_source_captured_at_s = None
 
     def capture_frame(self):
-        return asyncio.run(self._hardware_agent.get_state_image(angle=0))
+        request_started_s = time.monotonic()
+        frame, frame_count, metadata = asyncio.run(
+            self._hardware_agent.get_state_image(angle=0, return_metadata=True)
+        )
+        received_at_ns = metadata.get("received_at_unix_ns")
+        age_s = None if received_at_ns is None else (time.time_ns() - received_at_ns) / 1e9
+        now_s = time.monotonic()
+        if now_s - self._last_latency_log_s >= 5.0:
+            LOGGER.info(
+                "camera timing: frame_count=%s upload_to_nav_ms=%s gateway_rpc_ms=%.1f",
+                frame_count, None if age_s is None else round(age_s * 1000, 1),
+                (now_s - request_started_s) * 1000,
+            )
+            self._last_latency_log_s = now_s
+        if (
+            frame_count == self._last_frame_count
+            or age_s is None
+            or age_s > self.max_source_age_s
+            or age_s < -0.1
+        ):
+            now_s = time.monotonic()
+            if now_s - self._last_stale_warning_s >= 5.0:
+                LOGGER.warning(
+                    "camera frame rejected: frame_count=%s repeated=%s upload_age_s=%s",
+                    frame_count, frame_count == self._last_frame_count, age_s,
+                )
+                self._last_stale_warning_s = now_s
+            self.last_source_captured_at_s = None
+            return None, frame_count
+        self._last_frame_count = frame_count
+        self.last_source_captured_at_s = time.monotonic() - max(0.0, age_s)
+        return frame, frame_count
 
     def release(self) -> None:
         pass
@@ -211,14 +248,20 @@ class ReplayRunner:
         self.segmentation_guard = segmentation_guard
         self.segmentation_observe_always = segmentation_observe_always
         self._frame_counter = 0
+        self._last_frame_captured_at_s = None
         self.running = True
 
     def _capture_frame(self):
         """Capture one camera frame, returning ``None`` on any failure."""
+        self._last_frame_captured_at_s = None
         if self.camera is None:
             return None
         try:
             captured, _frame = self.camera.capture_frame()
+            if captured is not None:
+                self._last_frame_captured_at_s = getattr(
+                    self.camera, "last_source_captured_at_s", None
+                )
             return captured
         except Exception as exc:  # Frame capture must never break navigation.
             LOGGER.warning("segmentation frame capture failed: %s", exc)
@@ -228,7 +271,12 @@ class ReplayRunner:
         observe = getattr(self.segmentation_guard, "observe", None)
         if observe is None:
             return None
-        return observe(frame_id, self._capture_frame())
+        frame = self._capture_frame()
+        if isinstance(self.segmentation_guard, SegmentationGuard):
+            return observe(
+                frame_id, frame, captured_at_s=self._last_frame_captured_at_s
+            )
+        return observe(frame_id, frame)
 
     def step(self) -> dict | None:
         get_sample = getattr(self.gps, "get_sample", None)
@@ -249,10 +297,20 @@ class ReplayRunner:
                 self._frame_counter += 1
                 segmentation_status = self._observe_segmentation(f"frame_{self._frame_counter}")
             guidance = self.guidance.update(None, "following", None, False, time.monotonic())
-            self._play(guidance.prompts)
+            prompts = list(guidance.prompts)
+            if self.voice_worker is not None:
+                warning = self.guidance.scheduler.request(
+                    Prompt("sensor:pose_unavailable", "定位或朝向不可用，请停止前进", 95),
+                    time.monotonic(),
+                )
+                prompts = [] if warning is None else [warning]
+            self._play(prompts)
             if self.follow_logger is not None:
-                self.follow_logger.append(coordinate, heading, segmentation=segmentation_status)
-            result = {"navigation_state": "following", "match_quality": "unavailable", "pause_progress": False, "prompts": [asdict(prompt) for prompt in guidance.prompts]}
+                self.follow_logger.append(
+                    coordinate, heading, voice_queued=bool(prompts),
+                    segmentation=segmentation_status,
+                )
+            result = {"navigation_state": "following", "match_quality": "unavailable", "pause_progress": False, "prompts": [asdict(prompt) for prompt in prompts]}
             if self.segmentation_guard is not None and self.segmentation_observe_always:
                 result["segmentation"] = segmentation_status
             return result
@@ -283,28 +341,55 @@ class ReplayRunner:
         )
         segmentation_result = None
         segmentation_prompts: tuple = ()
+        decision = None
         if self.segmentation_guard is not None:
             self._frame_counter += 1
             frame_id = f"frame_{self._frame_counter}"
             captured = self._capture_frame()
-            decision = self.segmentation_guard.apply(
-                command_clock, command_text, frame_id, captured, time.monotonic()
-            )
+            if isinstance(self.segmentation_guard, SegmentationGuard):
+                decision = self.segmentation_guard.apply(
+                    command_clock, command_text, frame_id, captured,
+                    time.monotonic(), captured_at_s=self._last_frame_captured_at_s,
+                )
+            else:
+                decision = self.segmentation_guard.apply(
+                    command_clock, command_text, frame_id, captured, time.monotonic()
+                )
             if decision is not None:
                 segmentation_result = decision.result.to_dict()
                 command_clock = str(decision.command_clock)
                 command_text = decision.command_text
                 segmentation_prompts = decision.prompts
+        mask_unavailable = (
+            self.segmentation_guard is not None
+            and self.segmentation_observe_always
+            and decision is None
+        )
+        if mask_unavailable:
+            segmentation_result = {"status": "mask_unavailable", "mask_ready": False}
+            command_clock = None
+            command_text = "前方画面未更新，请停止前进"
         gps_action = make_gps_action(float(heading), target_heading)
         navigation_state = "completed" if self.matcher.is_complete(self.arrival_distance_m) else "following"
         pause_progress = navigation_state == "completed"
         guidance = self.guidance.update(match.matched_s_m, navigation_state, match.cross_track_error_m, pause_progress, time.monotonic())
-        self._play(guidance.prompts)
-        emitted_prompts = list(guidance.prompts)
-        for prompt in segmentation_prompts:
-            self._play((prompt,))
-            emitted_prompts.append(prompt)
-        if self.voice_directions and self.voice_worker is not None and navigation_state != "completed":
+        if mask_unavailable:
+            emitted_prompts = []
+            if self.voice_worker is not None and navigation_state != "completed":
+                warning = self.guidance.scheduler.request(
+                    Prompt("seg:mask_unavailable", command_text, 95),
+                    time.monotonic(),
+                )
+                if warning is not None:
+                    self._play((warning,))
+                    emitted_prompts.append(warning)
+        else:
+            self._play(guidance.prompts)
+            emitted_prompts = list(guidance.prompts)
+            for prompt in segmentation_prompts:
+                self._play((prompt,))
+                emitted_prompts.append(prompt)
+        if self.voice_directions and self.voice_worker is not None and navigation_state != "completed" and not mask_unavailable:
             direction_prompt = self.guidance.scheduler.request(
                 Prompt(f"direction:{command_clock}", command_text, 2), time.monotonic()
             )

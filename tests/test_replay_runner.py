@@ -5,7 +5,7 @@ from pathlib import Path
 
 from memory_nav.config import load_config
 from memory_nav.recording.anchor_collector import AnchorCandidate, save_anchors
-from memory_nav.replay.replay_nav import ReplayRunner, validate_ready_route
+from memory_nav.replay.replay_nav import HardwareGatewayCamera, ReplayRunner, validate_ready_route
 from memory_nav.trajectory.coordinate import LocalFrame
 from memory_nav.replay.anchor_matcher import VisualMatchResult
 import cv2
@@ -41,6 +41,31 @@ class FakeIMU:
 
 
 class ReplayRunnerTests(unittest.TestCase):
+    def test_gateway_camera_rejects_repeated_and_old_frames(self):
+        import time
+
+        class Agent:
+            def __init__(self):
+                self.frame_count = 1
+                self.received_at_ns = time.time_ns()
+
+            async def get_state_image(self, **kwargs):
+                self.last_kwargs = kwargs
+                return (
+                    np.zeros((8, 8, 3), dtype=np.uint8),
+                    self.frame_count,
+                    {"received_at_unix_ns": self.received_at_ns},
+                )
+
+        agent = Agent()
+        camera = HardwareGatewayCamera(agent, max_source_age_s=0.8)
+        self.assertIsNotNone(camera.capture_frame()[0])
+        self.assertIsNone(camera.capture_frame()[0])
+        agent.frame_count = 2
+        agent.received_at_ns = time.time_ns() - 2_000_000_000
+        self.assertIsNone(camera.capture_frame()[0])
+        self.assertTrue(agent.last_kwargs["return_metadata"])
+
     def make_route(self, root: Path, anchor_image=False):
         frame = LocalFrame(113.0, 23.0)
         points = []
@@ -96,6 +121,48 @@ class ReplayRunnerTests(unittest.TestCase):
             runner.close()
             self.assertTrue(any(item["key"].startswith("direction:") for item in result["prompts"]))
             self.assertIn(result["command"], spoken)
+
+    def test_online_segmentation_without_fresh_mask_speaks_stop(self):
+        class Camera:
+            def capture_frame(self):
+                return np.zeros((8, 8, 3), dtype=np.uint8), 1
+
+        class Guard:
+            def apply(self, *args):
+                return None
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            frame = self.make_route(root)
+            position = frame.to_geodetic(3, 0)
+            spoken = []
+            runner = ReplayRunner(
+                root, load_config(), gps=FakeGPS([(list(position), "good")]),
+                imu=FakeIMU([90]), speaker=spoken.append, camera=Camera(),
+                voice_directions=True, segmentation_guard=Guard(),
+                segmentation_observe_always=True,
+            )
+            result = runner.step()
+            runner.close()
+            self.assertEqual(result["command_clock"], None)
+            self.assertEqual(result["segmentation"]["status"], "mask_unavailable")
+            self.assertEqual([p["key"] for p in result["prompts"]], ["seg:mask_unavailable"])
+            self.assertEqual(spoken, ["前方画面未更新，请停止前进"])
+
+    def test_missing_pose_speaks_stop(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.make_route(root)
+            spoken = []
+            runner = ReplayRunner(
+                root, load_config(), gps=FakeGPS([(None, None)]),
+                imu=FakeIMU([None]), speaker=spoken.append,
+                voice_directions=True,
+            )
+            result = runner.step()
+            runner.close()
+            self.assertEqual([p["key"] for p in result["prompts"]], ["sensor:pose_unavailable"])
+            self.assertEqual(spoken, ["定位或朝向不可用，请停止前进"])
 
     def test_following_writes_outdoor_nav_compatible_gps_log(self):
         with tempfile.TemporaryDirectory() as directory:

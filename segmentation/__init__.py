@@ -27,6 +27,7 @@ from memory_nav.segmentation.guard import SegmentationDecision, SegmentationGuar
 from memory_nav.segmentation.mask_loader import load_mask, mask_path_for, save_mask
 from memory_nav.segmentation.online_provider import (
     CatSegWorkerProvider,
+    MaskObservation,
     NullMaskProvider,
 )
 from memory_nav.segmentation.online_visualizer import SegmentationFrameSaver
@@ -43,6 +44,7 @@ __all__ = [
     "CatSegWorkerProvider",
     "HourClearance",
     "MaskProvider",
+    "MaskObservation",
     "NullMaskProvider",
     "SegmentationAvoidance",
     "SegmentationConfig",

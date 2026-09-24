@@ -27,6 +27,36 @@ class CameraMetadataTests(unittest.TestCase):
         _,count=camera.capture_frame()
         self.assertEqual(count,7)
 
+    def test_latest_only_replaces_backlogged_upload(self):
+        from utils.glasses_camera import ImageRequest
+        with patch.object(threading.Thread, 'start'), patch('utils.glasses_camera.time.sleep'):
+            camera = Camera(latest_only=True)
+        first = ImageRequest(image_base64="x", frame_timestamp_ns=1)
+        second = ImageRequest(image_base64="x", frame_timestamp_ns=2)
+        camera._enqueue_upload(b"first", first)
+        camera._enqueue_upload(b"second", second)
+        self.assertEqual(camera.data_queue.qsize(), 1)
+        self.assertEqual(camera.data_queue.get_nowait()[0], b"second")
+        self.assertEqual(camera.dropped_old_frames, 1)
+
+    def test_latest_only_preserves_queued_one_shot_capture(self):
+        import queue
+        from utils.glasses_camera import ImageRequest
+        with patch.object(threading.Thread, 'start'), patch('utils.glasses_camera.time.sleep'):
+            camera = Camera(latest_only=True)
+        with camera._capture_condition:
+            camera._waiting_capture = (1, (1280, 720))
+        requested = ImageRequest(
+            image_base64="x", capture_width=1280, capture_height=720
+        )
+        regular = ImageRequest(
+            image_base64="x", capture_width=640, capture_height=480
+        )
+        camera._enqueue_upload(b"requested", requested)
+        with self.assertRaises(queue.Full):
+            camera._enqueue_upload(b"regular", regular)
+        self.assertEqual(camera.data_queue.get_nowait()[0], b"requested")
+
     def test_one_shot_preserves_its_own_metadata(self):
         camera=self.make_camera();result=[]
         worker=threading.Thread(target=lambda: result.append(camera.capture_frame_with_metadata(20,10)))

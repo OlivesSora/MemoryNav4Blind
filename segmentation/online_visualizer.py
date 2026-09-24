@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -47,7 +48,7 @@ class SegmentationFrameSaver:
         return cv2.cvtColor(array.astype(np.uint8), cv2.COLOR_RGB2BGR)
 
     def _write(self, annotated: np.ndarray, now: float) -> None:
-        stamp = time.strftime("%Y%m%d_%H%M%S") + f"_{int((now % 1) * 1000):03d}"
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
         path = self.vis_dir / f"{self.prefix}_{stamp}.jpg"
         cv2.imwrite(str(path), annotated)
         self.saved_count += 1

@@ -130,9 +130,12 @@ def _validate_segmentation(config: Mapping[str, Any]) -> None:
     scale = online.get("input_scale", 0.5)
     if not isinstance(scale, (int, float)) or not 0.0 < scale <= 1.0:
         raise ConfigError("segmentation.online.input_scale must be in (0, 1]")
-    max_hz = online.get("max_hz", 1.0)
+    max_hz = online.get("max_hz", 4.0)
     if not isinstance(max_hz, (int, float)) or max_hz <= 0:
         raise ConfigError("segmentation.online.max_hz must be positive")
+    max_mask_age = online.get("max_mask_age_s", 0.4)
+    if not isinstance(max_mask_age, (int, float)) or max_mask_age <= 0:
+        raise ConfigError("segmentation.online.max_mask_age_s must be positive")
     vis_interval = online.get("vis_interval_s", 1.0)
     if not isinstance(vis_interval, (int, float)) or vis_interval < 0:
         raise ConfigError("segmentation.online.vis_interval_s cannot be negative")

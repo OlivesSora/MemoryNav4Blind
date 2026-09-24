@@ -1,5 +1,7 @@
 import socket
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 
@@ -7,11 +9,15 @@ import cv2
 import numpy as np
 
 from memory_nav.segmentation.avoidance import SegmentationAvoidance, SegmentationConfig
-from memory_nav.segmentation.catseg_worker import parse_args as worker_parse_args
+from memory_nav.segmentation.catseg_worker import (
+    _serve_connection,
+    parse_args as worker_parse_args,
+)
 from memory_nav.segmentation.catseg_trt import preprocess_bgr, probabilities_to_mask
 from memory_nav.segmentation.guard import SegmentationGuard
 from memory_nav.segmentation.online_provider import (
     CatSegWorkerProvider,
+    MaskObservation,
     NullMaskProvider,
 )
 from memory_nav.segmentation.online_visualizer import SegmentationFrameSaver
@@ -59,6 +65,33 @@ class ProtocolTests(unittest.TestCase):
         finally:
             receiver.close()
 
+    def test_worker_echoes_source_frame_metadata(self):
+        sender, receiver = socket.socketpair()
+        worker = threading.Thread(
+            target=_serve_connection,
+            args=(receiver, lambda image: np.ones(image.shape[:2], dtype=bool), 1.0),
+        )
+        worker.start()
+        try:
+            send_message(
+                sender,
+                {
+                    "type": "frame",
+                    "frame_id": "frame_17",
+                    "captured_at_s": 123.5,
+                    "image": np.zeros((4, 5, 3), dtype=np.uint8),
+                },
+            )
+            reply = recv_message(sender)
+            self.assertEqual(reply["frame_id"], "frame_17")
+            self.assertEqual(reply["captured_at_s"], 123.5)
+            self.assertEqual(reply["mask"].shape, (4, 5))
+            send_message(sender, {"type": "shutdown"})
+        finally:
+            sender.close()
+            worker.join(timeout=1.0)
+            receiver.close()
+
 
 class WorkerArgTests(unittest.TestCase):
     def test_parse_args_defaults(self):
@@ -104,6 +137,19 @@ class ProviderTests(unittest.TestCase):
         provider._started = True  # Avoid spawning the real worker.
         return provider
 
+    @staticmethod
+    def set_observation(provider, *, age_s=0.0, frame_id="frame_1"):
+        frame = np.zeros((50, 50, 3), dtype=np.uint8)
+        now = time.monotonic()
+        provider._latest_observation = MaskObservation(
+            frame_id=frame_id,
+            captured_at_s=now - age_s,
+            completed_at_s=now,
+            frame=frame,
+            mask=left_half_mask(25, 25).astype(np.uint8) * 255,
+            inference_s=0.05,
+        )
+
     def test_to_bgr_converts_rgb(self):
         rgb = np.zeros((2, 2, 3), dtype=np.uint8)
         rgb[:, :, 0] = 255
@@ -112,7 +158,7 @@ class ProviderTests(unittest.TestCase):
 
     def test_get_mask_returns_latest_and_resizes(self):
         provider = self.make_provider()
-        provider._latest_mask = (left_half_mask(25, 25).astype(np.uint8) * 255)
+        self.set_observation(provider)
         frame = np.zeros((50, 50, 3), dtype=np.uint8)
         mask = provider.get_mask("frame_1", frame)
         self.assertEqual(mask.shape, (50, 50))
@@ -122,6 +168,38 @@ class ProviderTests(unittest.TestCase):
     def test_get_mask_returns_none_without_result(self):
         provider = self.make_provider()
         self.assertIsNone(provider.get_mask("frame_1"))
+
+    def test_get_mask_rejects_observation_older_than_limit(self):
+        provider = self.make_provider()
+        self.set_observation(provider, age_s=0.41)
+        self.assertIsNone(provider.get_mask("frame_2"))
+        self.assertIsNotNone(provider.latest_observation())
+
+    def test_provider_uses_host_upload_time_for_new_frame(self):
+        class LiveThread:
+            def is_alive(self):
+                return True
+
+        provider = self.make_provider()
+        provider._started = True
+        provider._thread = LiveThread()
+        uploaded_at_s = time.monotonic() - 0.3
+        provider.get_observation(
+            "frame_source", np.zeros((8, 8, 3), dtype=np.uint8),
+            captured_at_s=uploaded_at_s,
+        )
+        self.assertAlmostEqual(
+            provider._pending_frame.captured_at_s, uploaded_at_s, delta=0.01
+        )
+
+    def test_observation_keeps_source_frame_and_id(self):
+        provider = self.make_provider()
+        self.set_observation(provider, frame_id="frame_source")
+        observation = provider.get_observation("frame_current")
+        self.assertIsNotNone(observation)
+        self.assertEqual(observation.frame_id, "frame_source")
+        self.assertEqual(observation.frame.shape, (50, 50, 3))
+        self.assertEqual(observation.mask.shape, (50, 50))
 
     def test_null_provider_never_returns_mask(self):
         provider = NullMaskProvider()
@@ -156,6 +234,31 @@ class GuardVisualizerTests(unittest.TestCase):
         guard.apply(3, "3点钟方向前进", "frame_1", np.zeros((10, 10, 3), np.uint8), now_s=0.0)
         self.assertEqual(calls, [])
 
+    def test_guard_visualizes_the_mask_source_frame(self):
+        calls = []
+        source_frame = np.full((100, 100, 3), 77, dtype=np.uint8)
+
+        class ObservationProvider:
+            def get_observation(self, frame_id, frame=None):
+                now = time.monotonic()
+                return MaskObservation(
+                    frame_id="source",
+                    captured_at_s=now,
+                    completed_at_s=now,
+                    frame=source_frame,
+                    mask=left_half_mask(),
+                    inference_s=0.01,
+                )
+
+        guard = SegmentationGuard(
+            SegmentationAvoidance(SegmentationConfig()),
+            ObservationProvider(),
+            visualizer=lambda *args: calls.append(args),
+        )
+        current_frame = np.zeros((100, 100, 3), dtype=np.uint8)
+        guard.apply(3, "3点钟方向前进", "current", current_frame, now_s=0.0)
+        self.assertEqual(len(calls), 1)
+        self.assertTrue(np.array_equal(calls[0][0], source_frame))
 
 class GuardObserveTests(unittest.TestCase):
     def test_observe_returns_starting_without_mask(self):
@@ -214,9 +317,15 @@ class BuildGuardTests(unittest.TestCase):
         from memory_nav.replay.replay_nav_seg import build_guard, parse_args
 
         args = parse_args(["--route-id", "route", "--seg-online"])
-        guard = build_guard(args, load_config())
+        config = load_config()
+        guard = build_guard(args, config)
         self.assertIsNotNone(guard)
         self.assertEqual(guard.provider.backend, "tensorrt")
+        self.assertEqual(guard.provider._min_interval_s, 0.25)
+        self.assertEqual(
+            guard.provider.max_mask_age_s,
+            config["segmentation"]["online"]["max_mask_age_s"],
+        )
         guard.close()
 
     def test_offline_mode_selects_cached_provider(self):
@@ -303,7 +412,6 @@ class VisualizerTests(unittest.TestCase):
             saved = cv2.imread(str(next(Path(directory).glob("seg_*.jpg"))))
             self.assertIsNotNone(saved)
             saver.close()
-
 
 if __name__ == "__main__":
     unittest.main()
